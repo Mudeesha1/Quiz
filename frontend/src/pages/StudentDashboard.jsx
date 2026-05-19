@@ -25,6 +25,7 @@ import {
   CircleStar,
   Map,
   CircleUser,
+  LogOut ,
 } from 'lucide-react';
 import logoicon from '../assets/icons/logo.png';
 import Footer from '../ui/Footer';
@@ -226,7 +227,8 @@ export default function StudentDashboard() {
                 data-alt="A friendly, high-quality close-up portrait of a primary school student avatar character. The character has bright, expressive eyes and a warm smile, wearing a modern blue and yellow scholar cap and gown in a 3D Pixar-inspired digital art style. The background is a soft, blurred library with floating magical educational particles and warm, inviting sunlight."
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuAk9z5GonZb0oXkuFqVzg5kIs9iHpOdeW7UmSYcA66ODqhlLo_pSWuPNl87YJ70E4hZwQMlK58F6_xTj3yfLT3gh_iSDZueouFRp74GfkED0XfiPl3jJQ0bvVM1d8JsGp9OMW2fg3qdMh7_6lcKZkYwAR9aMd4hHoPk3DWUa18gUsSaiw1OsEwGYengpCade_72zEWXAxuSCiW9uklJ-5qCSewEo2gsZWHs0BbD_PNHxThTnWTZN80kAzaZgPfTBsgQBlpuPdmdhB8"
               />
-              <span className="hidden sm:block font-label-lg text-label-lg">Logout</span>
+              <button className="w-full sm:w-auto chunky-button-primary flex items-center justify-center sm:justify-start gap-2 rounded-full bg-error px-6 md:px-8 py-2.5 md:py-3 font-button-text text-white text-sm md:text-base shadow-[0px_4px_0px_0px_#600e0e] transition-all active:translate-y-1 active:shadow-none font-bold">
+                Logout <LogOut size={22} className="text-white" strokeWidth={2.25} /></button>
             </div>
           </div>
         </header>
