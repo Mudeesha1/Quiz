@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Award,
@@ -37,7 +38,7 @@ const NAV_ITEMS = [
   { label: 'Past Papers', icon: FileText },
   { label: 'Adventure Map', icon: Map },
   { label: 'Leading', icon: ChartNoAxesColumn },
-  { label: 'Profile', icon: CircleUser },
+  { label: 'Profile', icon: CircleUser, to: '/profile' },
 ];
 
 const QUESTS = [
@@ -166,9 +167,10 @@ export default function StudentDashboard() {
 
         <nav className="space-y-1 grow">
           {NAV_ITEMS.map((item) => (
-            <a
+            <Link
               key={item.label}
-              href="#"
+              to={item.to || '#'}
+              onClick={() => setSidebarOpen(false)}
               className={`mx-2 flex items-center gap-3 rounded-lg px-4 py-3 transition-all ${
                 item.active
                   ? 'translate-x-1 bg-primary-container text-white shadow-sm'
@@ -182,7 +184,7 @@ export default function StudentDashboard() {
                 className={item.active ? 'text-white' : 'text-[#4b5563]'}
               />
               <span className="font-label-lg text-label-lg">{item.label}</span>
-            </a>
+            </Link>
           ))}
         </nav>
 
