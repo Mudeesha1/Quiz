@@ -29,10 +29,10 @@ import { StudentHeader, StudentSidebar } from '../ui';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, active: true },
-  { label: 'Quizzes', icon: BookOpen },
+  { label: 'Quizzes', icon: BookOpen, to: '/quizzes' },
   { label: 'Past Papers', icon: FileText, to: '/past-papers' },
   { label: 'Adventure Map', icon: Map },
-  { label: 'Leading', icon: ChartNoAxesColumn },
+  { label: 'Leading', icon: Trophy },
   { label: 'Profile', icon: CircleUser, to: '/profile' },
 ];
 

@@ -17,6 +17,7 @@ import {
 	CircleUser,
 	Clock3,
 	Bookmark,
+	Map,
 } from 'lucide-react';
 import Footer from '../ui/Footer';
 import { Badge as UIBadge, ButtonPrimary, ButtonSecondary, Card, CardContent, CardHeader, ProgressBar } from '../ui';
@@ -26,7 +27,7 @@ const NAV_ITEMS = [
 	{ label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
 	{ label: 'Quizzes', icon: BookOpen, to: '/dashboard' },
 	{ label: 'Past Papers', icon: FileText, to: '/past-papers', active: true },
-	{ label: 'Adventure Map', icon: LineChart, to: '/dashboard' },
+	{ label: 'Adventure Map', icon: Map, to: '/dashboard' },
 	{ label: 'Leading', icon: Trophy, to: '/dashboard' },
 	{ label: 'Profile', icon: CircleUser, to: '/profile' },
 ];
@@ -144,13 +145,13 @@ export default function PastPapers() {
 
 						<div className="relative z-10">
 							<p className="mb-2 text-sm font-bold tracking-[0.2em] uppercase text-primary-fixed-dim ">Paper Archive</p>
-							<h1 className="mb-3 text-display-lg font-headline-lg text-display-lg text-indigo-100">Sharpen your skills with official past papers</h1>
+							<h1 className="mb-3 text-indigo-100 text-display-lg font-headline-lg">Sharpen your skills with official past papers</h1>
 							<p className="max-w-full text-body-lg font-body-lg opacity-90">
 								Every practice session brings you closer to your goals. Browse the archive, download papers, and track your progress in Quiz Master.
 							</p>
 						</div>
 
-						<div className="absolute -right-16 -bottom-20 h-64 w-64 rounded-full bg-secondary-container/20 blur-3xl" />
+						<div className="absolute w-64 h-64 rounded-full -right-16 -bottom-20 bg-secondary-container/20 blur-3xl" />
 					</section>
 
 					<section className="grid grid-cols-12 gap-4 md:gap-gutter">
@@ -162,7 +163,7 @@ export default function PastPapers() {
 										 Archive Progress
 									</h3>
 								</CardHeader>
-								<CardContent className="space-y-5 p-6">
+								<CardContent className="p-6 space-y-5">
 									<ProgressBar value={68} max={100} label="Collection progress" />
 									<div className="space-y-3 text-sm">
 										<div className="flex items-center justify-between">
@@ -185,7 +186,7 @@ export default function PastPapers() {
 								<CardHeader className="px-6 py-5 border-b border-outline-variant">
 									<h2 className="text-headline-md font-headline-md">Quick Tips</h2>
 								</CardHeader>
-								<CardContent className="space-y-4 p-6 text-sm text-on-surface-variant">
+								<CardContent className="p-6 space-y-4 text-sm text-on-surface-variant">
 									<p>• Start with the latest paper to gauge your current level.</p>
 									<p>• Download papers to practice offline anytime.</p>
 									<p>• Use filters to jump to your subject or year faster.</p>
@@ -197,31 +198,31 @@ export default function PastPapers() {
 							<Card className="mb-6 rounded-[1.75rem] border border-outline-variant bg-surface-container-lowest shadow-sm">
 								<CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:gap-3 md:p-5">
 									<div className="relative w-full min-w-0 md:flex-1">
-										<Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" strokeWidth={2.25} />
+										<Search size={18} className="absolute -translate-y-1/2 left-4 top-1/2 text-on-surface-variant" strokeWidth={2.25} />
 										<input
 											value={searchTerm}
 											onChange={(event) => setSearchTerm(event.target.value)}
-											className="w-full rounded-xl border border-outline-variant bg-surface px-4 py-3 pl-11 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+											className="w-full px-4 py-3 text-sm transition border outline-none rounded-xl border-outline-variant bg-surface pl-11 focus:border-primary focus:ring-2 focus:ring-primary/15"
 											placeholder="Search by paper name..."
 											type="text"
 										/>
 									</div>
-									<div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:flex-nowrap md:gap-3">
+									<div className="flex flex-col w-full gap-3 md:w-auto md:flex-row md:flex-nowrap md:gap-3">
 										<div className="relative w-full md:w-48 md:min-w-48">
-											<select className="w-full appearance-none rounded-xl border border-outline-variant bg-surface px-4 py-3 pr-10 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15">
+											<select className="w-full px-4 py-3 pr-10 text-sm transition border outline-none appearance-none rounded-xl border-outline-variant bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15">
 												{FILTER_OPTIONS.subjects.map((subject) => (
 													<option key={subject}>{subject}</option>
 												))}
 											</select>
-											<ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant" strokeWidth={2.25} />
+											<ChevronDown size={16} className="absolute -translate-y-1/2 pointer-events-none right-4 top-1/2 text-on-surface-variant" strokeWidth={2.25} />
 										</div>
 										<div className="relative w-full md:w-36 md:min-w-36">
-											<select className="w-full appearance-none rounded-xl border border-outline-variant bg-surface px-4 py-3 pr-10 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15">
+											<select className="w-full px-4 py-3 pr-10 text-sm transition border outline-none appearance-none rounded-xl border-outline-variant bg-surface focus:border-primary focus:ring-2 focus:ring-primary/15">
 												{FILTER_OPTIONS.years.map((year) => (
 													<option key={year}>{year}</option>
 												))}
 											</select>
-											<ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant" strokeWidth={2.25} />
+											<ChevronDown size={16} className="absolute -translate-y-1/2 pointer-events-none right-4 top-1/2 text-on-surface-variant" strokeWidth={2.25} />
 										</div>
 									</div>
 								</CardContent>
@@ -233,7 +234,7 @@ export default function PastPapers() {
 										<Card key={`${paper.subject}-${paper.year}-${paper.title}`} className={`group relative overflow-hidden rounded-[1.75rem] border border-outline-variant bg-surface-container-lowest shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg ${paper.featured ? 'md:col-span-2' : ''}`}>
 											<CardContent className="p-6">
 												{paper.featured ? <Star size={72} className="absolute -right-4 -top-4 text-primary/15 rotate-12" strokeWidth={1.75} /> : null}
-												<div className="mb-4 flex items-start justify-between gap-4">
+												<div className="flex items-start justify-between gap-4 mb-4">
 													<div className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${paper.accent}`}>{paper.subject}</div>
 													<span className="font-label-lg text-label-lg text-on-surface-variant">{paper.year}</span>
 												</div>
@@ -242,7 +243,7 @@ export default function PastPapers() {
 
 												<div className={`mb-6 flex items-center gap-2 ${paper.status === 'Completed' ? 'text-tertiary' : 'text-on-surface-variant'}`}>
 													<Glyph icon={paper.icon} size={16} className={paper.status === 'Completed' ? 'text-tertiary' : 'text-on-surface-variant'} />
-													<span className="text-xs font-bold uppercase tracking-wider">{paper.status}</span>
+													<span className="text-xs font-bold tracking-wider uppercase">{paper.status}</span>
 													<span className="text-xs">• {paper.detail}</span>
 												</div>
 
@@ -251,8 +252,8 @@ export default function PastPapers() {
 														<Download size={18} strokeWidth={2.25} />
 														Download
 													</ButtonPrimary>
-													<ButtonSecondary className="chunky-button flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-white p-0 text-primary hover:bg-primary-fixed/40">
-														<Bookmark className="h-5 w-5 shrink-0 md:h-6 md:w-6" strokeWidth={2.5} />
+													<ButtonSecondary className="flex items-center justify-center w-16 h-16 p-0 bg-white border-2 rounded-full chunky-button shrink-0 border-primary text-primary hover:bg-primary-fixed/40">
+														<Bookmark className="w-5 h-5 shrink-0 md:h-6 md:w-6" strokeWidth={2.5} />
 													</ButtonSecondary>
 												</div>
 											</CardContent>
@@ -264,7 +265,7 @@ export default function PastPapers() {
 									<CardContent className="flex flex-col items-center justify-center py-16 text-center">
 										<Search size={56} className="mb-4 text-outline-variant" strokeWidth={1.75} />
 										<h3 className="mb-2 text-headline-md font-headline-md text-on-surface-variant">No Papers Found</h3>
-										<p className="mb-6 max-w-sm text-sm text-on-surface-variant">
+										<p className="max-w-sm mb-6 text-sm text-on-surface-variant">
 											We couldn't find any papers matching your search. Try a different subject, year, or paper title.
 										</p>
 										<ButtonPrimary onClick={() => setSearchTerm('')} className="rounded-full bg-primary px-6 py-3 text-button-text text-white shadow-[0px_4px_0px_0px_#2e23a8]">
@@ -274,8 +275,8 @@ export default function PastPapers() {
 								</Card>
 							)}
 
-							<div className="mt-10 flex justify-center">
-								<ButtonSecondary className="rounded-full border-2 border-primary px-8 py-3 text-button-text text-primary hover:bg-primary-fixed/40">
+							<div className="flex justify-center mt-10">
+								<ButtonSecondary className="px-8 py-3 border-2 rounded-full border-primary text-button-text text-primary hover:bg-primary-fixed/40">
 									Load More Papers
 								</ButtonSecondary>
 							</div>
