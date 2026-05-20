@@ -4,6 +4,7 @@ import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import StudentDashboard from './pages/StudentDashboard';
+import PastPapers from './pages/PastPapers';
 import StudentProfile from './pages/StudentProfile';
 import ComponentLibraryDemo from './ui/ComponentLibraryDemo';
 
@@ -16,6 +17,7 @@ function PageTitleManager() {
       '/registration': 'Registration | Quiz Master',
       '/login': 'Student Login | Quiz Master',
       '/dashboard': 'Dashboard | Quiz Master',
+      '/past-papers': 'Past Papers | Quiz Master',
       '/profile': 'Profile | Quiz Master',
       '/demo': 'Component Demo | Quiz Master',
     };
@@ -35,6 +37,7 @@ function App() {
         <Route path="/registration" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard" element={<StudentDashboard />} />
+        <Route path="/past-papers" element={<PastPapers />} />
         <Route path="/profile" element={<StudentProfile />} />
         <Route path="/demo" element={<ComponentLibraryDemo />} />
       </Routes>
