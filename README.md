@@ -7,6 +7,7 @@ Simple quiz application (React + Vite).
 **Developer:** Sahan Kaushalya
 
 **GitHub:** https://github.com/Sahan-Kaushalya
+**Company:** https://www.infonade.com/team/ishara-sahan
 
 ## Overview
 
