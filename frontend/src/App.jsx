@@ -10,6 +10,7 @@ import QuizResult from './pages/QuizResult';
 import PastPapers from './pages/PastPapers';
 import StudentProfile from './pages/StudentProfile';
 import LeadingPage from './pages/LeadingPage';
+import AdminLogin from './pages/admin/AdminLogin';
 import ComponentLibraryDemo from './ui/ComponentLibraryDemo';
 
 function PageTitleManager() {
@@ -26,6 +27,7 @@ function PageTitleManager() {
       '/past-papers': 'Past Papers | Quiz Master',
       '/leading': 'Leaderboard | Quiz Master',
       '/profile': 'Profile | Quiz Master',
+      '/admin/login': 'Admin Login | Quiz Master',
       '/demo': 'Component Demo | Quiz Master',
     };
 
@@ -49,6 +51,7 @@ function App() {
         <Route path="/past-papers" element={<PastPapers />} />
         <Route path="/leading" element={<LeadingPage />} />
         <Route path="/profile" element={<StudentProfile />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/demo" element={<ComponentLibraryDemo />} />
       </Routes>
     </Router>
