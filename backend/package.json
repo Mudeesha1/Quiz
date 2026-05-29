@@ -1,0 +1,27 @@
+{
+  "name": "quiz-api",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "Sahan Kaushalya",
+  "type": "commonjs",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon app.js",
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-async-error": "^0.0.2",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.22.4",
+    "nodemailer": "^8.0.10",
+    "nodemon": "^3.1.14",
+    "sequelize": "^6.37.8",
+    "validator": "^13.15.35"
+  }
+}
