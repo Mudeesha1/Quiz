@@ -5,7 +5,9 @@ const errorHandler = require("./handlers/error.handler");
 require("dotenv").config();
 const sequelize = require("./config/db.config");
 require("./models/associations");
-
+const usersRoutes = require("./modules/users/users.routes");
+const adminRoutes = require("./modules/admin/admin.routes");
+const applicationRoutes = require("./modules/application/application.routes");
 const app = express();
 app.use(cors());
 
@@ -36,6 +38,10 @@ app.get("/api/v1/health", (req, res) => {
   });
 });
 
+// Use the defined routes
+app.use("/api/v1/users", usersRoutes);
+app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/app", applicationRoutes);
 
 
 /// end of all routes......
