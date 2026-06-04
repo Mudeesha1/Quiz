@@ -4,6 +4,7 @@ const cors = require("cors");
 const errorHandler = require("./handlers/error.handler");
 require("dotenv").config();
 const sequelize = require("./config/db.config");
+require("./models/associations");
 
 const app = express();
 app.use(cors());
