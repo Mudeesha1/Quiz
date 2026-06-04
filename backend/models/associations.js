@@ -1,5 +1,6 @@
 const Grade = require("./grade.model");
 const User = require("./users.model");
+const Admin = require("./admin.model");
 
 Grade.hasMany(User, {
   foreignKey: "grade_id",
@@ -14,4 +15,5 @@ User.belongsTo(Grade, {
 module.exports = {
   Grade,
   User,
+  Admin,
 };

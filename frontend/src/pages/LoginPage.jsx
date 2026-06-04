@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
 import logoicon from '../assets/icons/logo.png';
-import patternsBg from '../assets/images/patterns.png';
 import Footer from '../ui/Footer';
+import { Toast, useToast } from '../ui/Toast';
+import { loginUser, saveAuthSession } from '../services/authService';
 
-function LoginField({ label, id, icon: Icon, type = 'text', placeholder, value, onChange }) {
+function LoginField({ label, id, icon: Icon, type = 'text', placeholder, value, onChange, error = '' }) {
     return (
         <div className="space-y-2">
             <label htmlFor={id} className="block text-sm font-bold text-on-surface">
@@ -22,14 +23,21 @@ function LoginField({ label, id, icon: Icon, type = 'text', placeholder, value, 
                     placeholder={placeholder}
                     value={value}
                     onChange={onChange}
-                    className="h-12 w-full rounded-full border border-outline-variant bg-surface-container-low px-4 pl-12 pr-4 text-sm text-on-surface shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-fixed/60"
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? `${id}-error` : undefined}
+                    className={`h-12 w-full rounded-full border bg-surface-container-low px-4 pl-12 pr-4 text-sm text-on-surface shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-fixed/60 ${error ? 'border-error focus:ring-error/20' : 'border-outline-variant'}`}
                 />
             </div>
+            {error ? (
+                <p id={`${id}-error`} className="px-1 text-xs font-semibold text-error">
+                    {error}
+                </p>
+            ) : null}
         </div>
     );
 }
 
-function PasswordField({ label, id, placeholder, value, onChange }) {
+function PasswordField({ label, id, placeholder, value, onChange, error = '' }) {
     const [showPassword, setShowPassword] = useState(false);
 
     return (
@@ -48,7 +56,9 @@ function PasswordField({ label, id, placeholder, value, onChange }) {
                     placeholder={placeholder}
                     value={value}
                     onChange={onChange}
-                    className="h-12 w-full rounded-full border border-outline-variant bg-surface-container-low px-4 pl-12 pr-14 text-sm text-on-surface shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-fixed/60"
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? `${id}-error` : undefined}
+                    className={`h-12 w-full rounded-full border bg-surface-container-low px-4 pl-12 pr-14 text-sm text-on-surface shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-fixed/60 ${error ? 'border-error focus:ring-error/20' : 'border-outline-variant'}`}
                 />
                 <button
                     type="button"
@@ -59,16 +69,53 @@ function PasswordField({ label, id, placeholder, value, onChange }) {
                     {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
                 </button>
             </div>
+            {error ? (
+                <p id={`${id}-error`} className="px-1 text-xs font-semibold text-error">
+                    {error}
+                </p>
+            ) : null}
         </div>
     );
 }
 
 export default function LoginPage() {
     const navigate = useNavigate();
+    const toast = useToast();
     const [values, setValues] = useState({
-        username: '',
+        identifier: '',
         password: '',
     });
+    const [errors, setErrors] = useState({
+        identifier: '',
+        password: '',
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const passwordChecks = {
+        length: values.password.length > 5 && values.password.length < 12,
+        number: /\d/.test(values.password),
+        uppercase: /[A-Z]/.test(values.password),
+    };
+
+    const validateForm = () => {
+        const nextErrors = {
+            identifier: '',
+            password: '',
+        };
+
+        if (!values.identifier.trim()) {
+            nextErrors.identifier = 'Username or Email is required.';
+        }
+
+        if (!values.password) {
+            nextErrors.password = 'Password is required.';
+        } else if (!passwordChecks.length || !passwordChecks.number || !passwordChecks.uppercase) {
+            nextErrors.password = 'Password must be 6-11 chars, with one number and one capital letter.';
+        }
+
+        setErrors(nextErrors);
+        return !Object.values(nextErrors).some(Boolean);
+    };
 
     const handleChange = (event) => {
         const { name, value } = event.target;
@@ -76,6 +123,46 @@ export default function LoginPage() {
             ...current,
             [name]: value,
         }));
+
+        if (errors[name]) {
+            setErrors((current) => ({
+                ...current,
+                [name]: '',
+            }));
+        }
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+
+        if (!validateForm()) {
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            const response = await loginUser({
+                identifier: values.identifier,
+                password: values.password,
+            });
+
+            saveAuthSession(response);
+            toast.success('Login successful. Redirecting to dashboard...');
+            navigate('/dashboard', { replace: true });
+        } catch (error) {
+            const fieldErrors = error?.fieldErrors || {};
+
+            if (Object.keys(fieldErrors).length > 0) {
+                setErrors((current) => ({
+                    ...current,
+                    ...fieldErrors,
+                }));
+            } else {
+                toast.error(error?.message || 'Login failed. Please try again.');
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -112,14 +199,15 @@ export default function LoginPage() {
                     </div>
 
                     <section className="rounded-[2rem] border border-white/80 bg-white/80 p-6 shadow-[0_12px_40px_-18px_rgba(17,24,39,0.24)] backdrop-blur-md sm:p-8">
-                        <form className="space-y-5">
+                        <form className="space-y-5" onSubmit={handleSubmit}>
                             <LoginField
                                 label="Username or Email"
-                                id="username"
+                                id="identifier"
                                 icon={UserRound}
                                 placeholder="user@gmail.com"
-                                value={values.username}
+                                value={values.identifier}
                                 onChange={handleChange}
+                                error={errors.identifier}
                             />
 
                             <PasswordField
@@ -129,13 +217,27 @@ export default function LoginPage() {
                                 placeholder="••••••••"
                                 value={values.password}
                                 onChange={handleChange}
+                                error={errors.password}
                             />
 
+                            <div className="px-2 py-2 space-y-1 font-semibold border rounded-sm border-outline-variant bg-surface-container-low text-on-surface-variant text-[8px]">
+                                <p className={passwordChecks.length ? 'text-tertiary text-xs font-semibold' : 'text-error text-xs font-semibold'}>
+                                    {passwordChecks.length ? '✓' : '•'} More than 5 characters
+                                </p>
+                                <p className={passwordChecks.number ? 'text-tertiary text-xs font-semibold' : 'text-error text-xs font-semibold'}>
+                                    {passwordChecks.number ? '✓' : '•'} Contains a number
+                                </p>
+                                <p className={passwordChecks.uppercase ? 'text-tertiary text-xs font-semibold' : 'text-error text-xs font-semibold'}>
+                                    {passwordChecks.uppercase ? '✓' : '•'} Contains a capital letter
+                                </p>
+                            </div>
+
                             <button
-                                type="button"
-                                className="flex w-full items-center justify-center rounded-full border-b-4 border-amber-700 bg-amber-400 px-6 py-4 text-base font-black text-gray-900 shadow-[0_12px_24px_rgba(251,191,36,0.22)] transition-all hover:-translate-y-0.5 hover:bg-amber-300 active:translate-y-1 active:border-b-0"
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="flex w-full items-center justify-center rounded-full border-b-4 border-amber-700 bg-amber-400 px-6 py-4 text-base font-black text-gray-900 shadow-[0_12px_24px_rgba(251,191,36,0.22)] transition-all hover:-translate-y-0.5 hover:bg-amber-300 active:translate-y-1 active:border-b-0 disabled:cursor-not-allowed disabled:opacity-70"
                             >
-                                Login to Play
+                                {isSubmitting ? 'Logging in...' : 'Login to Play'}
                                 <ArrowRight size={18} className="ml-2" />
                             </button>
                         </form>
@@ -170,6 +272,18 @@ export default function LoginPage() {
                     </section>
                 </div>
             </main>
+
+            <div className="fixed z-50 space-y-3 top-4 right-4">
+                {toast.toasts.map((item) => (
+                    <Toast
+                        key={item.id}
+                        type={item.type}
+                        message={item.message}
+                        duration={item.duration}
+                        onClose={() => toast.removeToast(item.id)}
+                    />
+                ))}
+            </div>
 
             <Footer />
         </div>

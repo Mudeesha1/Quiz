@@ -16,14 +16,14 @@ export function StudentSidebar({ items, open, onClose, rankLabel = '#42' }) {
           open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="mb-10 px-6">
+        <div className="px-6 mb-10">
           <div className="flex items-center gap-3">
-            <img src={logoicon} alt="Quiz Master" className="h-8 w-8 rounded-lg" />
+            <img src={logoicon} alt="Quiz Master" className="w-8 h-8 rounded-lg" />
             <h3 className="font-headline-md text-headline-md font-extrabold tracking-tight text-[#4a39e2]">Quiz Master</h3>
           </div>
         </div>
 
-        <nav className="grow space-y-1">
+        <nav className="space-y-1 grow">
           {items.map((item) => {
             const isActive = Boolean(item.active);
 
@@ -43,22 +43,22 @@ export function StudentSidebar({ items, open, onClose, rankLabel = '#42' }) {
           })}
         </nav>
 
-        <div className="mx-4 mb-4 mt-auto rounded-lg border border-outline-variant bg-surface-container-low p-4">
+        <div className="p-4 mx-4 mt-auto mb-4 border rounded-lg border-outline-variant bg-surface-container-low">
           <h3 className="mb-3 flex items-center gap-2 font-label-lg text-label-lg text-[#4a39e2]">
             <Trophy size={18} strokeWidth={2.25} />
             Global Rank
           </h3>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-[#6b7280]">Your Position</span>
             <span className="font-bold text-[#d27d00]">{rankLabel}</span>
           </div>
           <div className="mt-2 space-y-2">
             <div className="flex items-center gap-2 text-xs opacity-70">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-secondary-container text-white">1</span>
+              <span className="flex items-center justify-center w-4 h-4 text-white rounded-full bg-secondary-container">1</span>
               <span>Leo The Brave</span>
             </div>
             <div className="flex items-center gap-2 text-xs opacity-70">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-400 text-white">2</span>
+              <span className="flex items-center justify-center w-4 h-4 text-white rounded-full bg-slate-400">2</span>
               <span>MathsWhiz2024</span>
             </div>
           </div>
@@ -70,19 +70,19 @@ export function StudentSidebar({ items, open, onClose, rankLabel = '#42' }) {
 
 export function StudentHeader({ onMenuClick, avatarSrc, logoutLabel = 'Logout' }) {
   return (
-    <header className="sticky top-0 z-40 flex w-full items-center justify-between bg-surface px-4 py-3 shadow-sm md:px-margin-desktop md:py-4">
+    <header className="sticky top-0 z-40 flex items-center justify-between w-full px-4 py-3 shadow-sm bg-surface md:px-margin-desktop md:py-4">
       <div className="flex items-center gap-4">
-        <button onClick={onMenuClick} className="rounded-lg p-2 transition-colors hover:bg-surface-container-low md:hidden" aria-label="Open menu">
+        <button onClick={onMenuClick} className="p-2 transition-colors rounded-lg hover:bg-surface-container-low md:hidden" aria-label="Open menu">
           <Menu size={24} className="text-on-surface" strokeWidth={2.25} />
         </button>
       </div>
       <div className="flex items-center gap-3 md:gap-6">
-        <div className="hidden items-center gap-2 rounded-full border border-tertiary-container/20 bg-tertiary-container/10 px-3 py-1 sm:flex">
+        <div className="items-center hidden gap-2 px-3 py-1 border rounded-full border-tertiary-container/20 bg-tertiary-container/10 sm:flex">
           <Flame size={16} className="text-tertiary-container" strokeWidth={2.25} />
           <span className="font-bold text-tertiary">450 XP</span>
         </div>
         <div className="flex items-center gap-2 px-3 md:gap-3 md:px-6">
-          <img alt="Student Avatar" className="h-8 w-8 rounded-full border-2 border-primary object-cover md:h-10 md:w-10" src={avatarSrc} />
+          <img alt="Student Avatar" className="object-cover w-8 h-8 border-2 rounded-full border-primary md:h-10 md:w-10" src={avatarSrc} />
           <button className="chunky-button-primary flex w-full items-center justify-center gap-2 rounded-full bg-error px-6 py-2.5 text-sm font-bold text-white shadow-[0px_4px_0px_0px_#600e0e] transition-all active:translate-y-1 active:shadow-none sm:w-auto md:px-8 md:py-3 md:text-base">
             {logoutLabel}
             <LogOut size={22} className="text-white" strokeWidth={2.25} />

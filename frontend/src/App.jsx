@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
@@ -11,6 +11,17 @@ import PastPapers from './pages/PastPapers';
 import StudentProfile from './pages/StudentProfile';
 import LeadingPage from './pages/LeadingPage';
 import ComponentLibraryDemo from './ui/ComponentLibraryDemo';
+import { getAuthSession } from './services/authService';
+
+function ProtectedRoute({ children }) {
+  const session = getAuthSession();
+
+  if (!session?.tokens?.accessToken) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 
 function PageTitleManager() {
   const location = useLocation();
@@ -43,12 +54,54 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/registration" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<StudentDashboard />} />
-        <Route path="/quizzes" element={<QuizPage />} />
-        <Route path="/quiz-card" element={<QuizCard />} />
-        <Route path="/past-papers" element={<PastPapers />} />
-        <Route path="/leading" element={<LeadingPage />} />
-        <Route path="/profile" element={<StudentProfile />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <StudentDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quizzes"
+          element={
+            <ProtectedRoute>
+              <QuizPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quiz-card"
+          element={
+            <ProtectedRoute>
+              <QuizCard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/past-papers"
+          element={
+            <ProtectedRoute>
+              <PastPapers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/leading"
+          element={
+            <ProtectedRoute>
+              <LeadingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <StudentProfile />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/demo" element={<ComponentLibraryDemo />} />
       </Routes>
     </Router>

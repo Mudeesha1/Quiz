@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2,
@@ -17,6 +17,8 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import logoicon from '../assets/icons/logo.png';
+import { Toast, useToast } from '../ui/Toast';
+import { registerUser } from '../services/authService';
 
 function Field({ label, id, icon: Icon, type = 'text', placeholder, error = '', value, onChange, children }) {
   return (
@@ -92,7 +94,7 @@ function PasswordField({ label, id, placeholder, value, onChange, error = '' }) 
   );
 }
 
-function ConfirmPasswordField({ label, id, placeholder, value, onChange }) {
+function ConfirmPasswordField({ label, id, placeholder, value, onChange, error = '' }) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -111,7 +113,9 @@ function ConfirmPasswordField({ label, id, placeholder, value, onChange }) {
           placeholder={placeholder}
           value={value}
           onChange={onChange}
-          className="h-12 w-full rounded-full border border-outline-variant bg-surface-container-low px-4 pl-12 pr-14 text-sm text-on-surface shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-fixed/60"
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className={`h-12 w-full rounded-full border bg-surface-container-low px-4 pl-12 pr-14 text-sm text-on-surface shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-fixed/60 ${error ? 'border-error focus:ring-error/20' : 'border-outline-variant'}`}
         />
         <button
           type="button"
@@ -122,6 +126,11 @@ function ConfirmPasswordField({ label, id, placeholder, value, onChange }) {
           {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
         </button>
       </div>
+      {error ? (
+        <p id={`${id}-error`} className="px-1 text-xs font-semibold text-error">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -136,13 +145,27 @@ function getPasswordChecks(password) {
 
 export default function SignupPage() {
   const navigate = useNavigate();
+  const toast = useToast();
+  const [grades, setGrades] = useState([]);
+  const [loadingGrades, setLoadingGrades] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [values, setValues] = useState({
+    fullName: '',
     username: '',
+    email: '',
     password: '',
     confirmPassword: '',
+    grade: '0',
+    schoolName: '',
   });
   const [errors, setErrors] = useState({
+    fullName: '',
     username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    grade: '',
+    schoolName: '',
   });
 
   const passwordChecks = getPasswordChecks(values.password);
@@ -160,13 +183,112 @@ export default function SignupPage() {
       [name]: value,
     }));
 
-    if (name === 'username') {
+    if (errors[name]) {
       setErrors((current) => ({
         ...current,
-        username: '',
+        [name]: '',
       }));
     }
   };
+
+  const validateForm = () => {
+    const nextErrors = {
+      fullName: '',
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      grade: '',
+      schoolName: '',
+    };
+
+    if (!values.fullName.trim()) nextErrors.fullName = 'Full Name is required.';
+    if (!values.username.trim()) nextErrors.username = 'Username is required.';
+
+    if (!values.email.trim()) {
+      nextErrors.email = 'Email Address is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
+      nextErrors.email = 'Please enter a valid email address.';
+    }
+
+    if (!values.password) {
+      nextErrors.password = 'Password is required.';
+    } else if (!passwordChecks.length || !passwordChecks.number || !passwordChecks.uppercase) {
+      nextErrors.password = 'Password must be 6-11 chars, with one number and one capital letter.';
+    }
+
+    if (!values.confirmPassword) {
+      nextErrors.confirmPassword = 'Confirm Password is required.';
+    } else if (!passwordsMatch) {
+      nextErrors.confirmPassword = 'Passwords do not match.';
+    }
+
+    if (!values.grade || values.grade === '0') nextErrors.grade = 'Grade is required.';
+    if (!values.schoolName.trim()) nextErrors.schoolName = 'School Name is required.';
+
+    setErrors(nextErrors);
+    return !Object.values(nextErrors).some(Boolean);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await registerUser({
+        fullName: values.fullName,
+        username: values.username,
+        email: values.email,
+        password: values.password,
+        confirmPassword: values.confirmPassword,
+        grade: Number(values.grade),
+        schoolName: values.schoolName,
+      });
+
+      toast.success('Registration successful! Redirecting to login...');
+      setTimeout(() => navigate('/login'), 900);
+    } catch (error) {
+      const fieldErrors = error?.fieldErrors || {};
+
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors((current) => ({
+          ...current,
+          ...fieldErrors,
+        }));
+      } else {
+        toast.error(error?.message || 'Something went wrong. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Load grades from backend
+  useEffect(() => {
+    const loadGrades = async () => {
+      try {
+        setLoadingGrades(true);
+        const base = import.meta.env.VITE_API_BASE_URL || '';
+        const res = await fetch(`${base}/app/grades`);
+        if (!res.ok) throw new Error('Failed to fetch grades');
+        const json = await res.json();
+        // Expecting { status: 'success', data: [...] }
+        const data = json?.data ?? [];
+        setGrades(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Load grades error', err);
+        setGrades([]);
+      } finally {
+        setLoadingGrades(false);
+      }
+    };
+
+    loadGrades();
+  }, []);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#f6f7ff_0%,#fbfbff_52%,#f8f9fb_100%)] px-4 py-10 text-on-background sm:px-6 lg:px-8">
@@ -217,8 +339,16 @@ export default function SignupPage() {
               </p>
             </div>
 
-            <form className="space-y-5">
-              <Field label="Full Name" id="fullName" icon={UserRound} placeholder="e.g. Mudeesha Deshan" />
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              <Field
+                label="Full Name"
+                id="fullName"
+                icon={UserRound}
+                placeholder="e.g. Mudeesha Deshan"
+                value={values.fullName}
+                onChange={handleChange}
+                error={errors.fullName}
+              />
 
               <Field
                 label="Username"
@@ -230,7 +360,16 @@ export default function SignupPage() {
                 error={errors.username}
               />
 
-              <Field label="Email Address" id="email" icon={Mail} type="email" placeholder="parent@email.com" />
+              <Field
+                label="Email Address"
+                id="email"
+                icon={Mail}
+                type="email"
+                placeholder="parent@email.com"
+                value={values.email}
+                onChange={handleChange}
+                error={errors.email}
+              />
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -240,7 +379,7 @@ export default function SignupPage() {
                     placeholder="Secret code"
                     value={values.password}
                     onChange={handleChange}
-                    error={passwordLengthError}
+                    error={errors.password || passwordLengthError}
                   />
                   <div className="px-2 py-2 space-y-1 font-semibold border text-[8px] rounded-sm border-outline-variant bg-surface-container-low text-on-surface-variant">
                     <p className={passwordChecks.length ? 'text-tertiary text-xs font-semibold' : 'text-error text-xs font-semibold'}>
@@ -262,6 +401,7 @@ export default function SignupPage() {
                     placeholder="Type it again"
                     value={values.confirmPassword}
                     onChange={handleChange}
+                    error={errors.confirmPassword}
                   />
                   <p className={`text-xs font-semibold ${values.confirmPassword && passwordsMatch ? 'text-tertiary' : 'text-error'}`}>
                     {values.confirmPassword
@@ -273,38 +413,70 @@ export default function SignupPage() {
                 </div>
               </div>
 
-                <Field label="Grade" id="grade" icon={GraduationCap}>
+                <Field label="Grade" id="grade" icon={GraduationCap} error={errors.grade}>
                   <div className="relative">
                     <select
                       id="grade"
                       name="grade"
-                      defaultValue="0"
+                      value={values.grade}
+                      onChange={handleChange}
                       className="w-full h-12 px-4 pl-12 text-sm transition border rounded-full outline-none appearance-none border-outline-variant bg-surface-container-low pr-11 text-on-surface focus:border-primary focus:ring-4 focus:ring-primary-fixed/60"
                     >
                       <option value="0" disabled>
-                        Select your grade
+                        {loadingGrades ? 'Loading grades...' : 'Select your grade'}
                       </option>
-                      <option value="1">Grade 1</option>
-                      <option value="2">Grade 2</option>
-                      <option value="3">Grade 3</option>
-                      <option value="4">Grade 4</option>
-                      <option value="5">Grade 5</option>
+                      {grades.length > 0
+                        ? grades.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.grade_name}
+                            </option>
+                          ))
+                        : !loadingGrades && (
+                            <>
+                              <option value="1">Grade 1</option>
+                              <option value="2">Grade 2</option>
+                              <option value="3">Grade 3</option>
+                              <option value="4">Grade 4</option>
+                              <option value="5">Grade 5</option>
+                            </>
+                          )}
                     </select>
                     <span className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-outline">
                       <ChevronDown size={18} strokeWidth={2.25} />
                     </span>
                   </div>
                 </Field>
-              <Field label="School Name" id="schoolName" icon={Building2} placeholder="e.g. Kirindiwela Central College" />
+              <Field
+                label="School Name"
+                id="schoolName"
+                icon={Building2}
+                placeholder="e.g. Kirindiwela Central College"
+                value={values.schoolName}
+                onChange={handleChange}
+                error={errors.schoolName}
+              />
 
               <button
-                type="button"
-                className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#10B981] px-6 text-sm font-extrabold text-white shadow-[0_14px_24px_-10px_rgba(16,185,129,0.8)] transition hover:-translate-y-0.5 hover:bg-[#13c18b] focus:outline-none focus:ring-4 focus:ring-emerald-300/60 active:translate-y-0"
+                type="submit"
+                disabled={isSubmitting}
+                className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#10B981] px-6 text-sm font-extrabold text-white shadow-[0_14px_24px_-10px_rgba(16,185,129,0.8)] transition hover:-translate-y-0.5 hover:bg-[#13c18b] focus:outline-none focus:ring-4 focus:ring-emerald-300/60 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                <span>Register Now </span>
+                <span>{isSubmitting ? 'Registering...' : 'Register Now'} </span>
                 <span className="text-base"> <UserCheck size={22} strokeWidth={2} /></span>
               </button>
             </form>
+
+            <div className="fixed z-50 space-y-3 top-4 right-4">
+              {toast.toasts.map((item) => (
+                <Toast
+                  key={item.id}
+                  type={item.type}
+                  message={item.message}
+                  duration={item.duration}
+                  onClose={() => toast.removeToast(item.id)}
+                />
+              ))}
+            </div>
 
             <p className="relative z-10 mt-8 text-sm font-medium text-center text-on-surface-variant">
               Already have an account?{' '}
