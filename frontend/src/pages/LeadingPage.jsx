@@ -11,7 +11,7 @@ import {
 	Trophy,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { clearAuthSession } from '../services/authService';
+import { clearAuthSession, getUserProfile } from '../services/authService';
 import onePlaceIcon from '../assets/icons/1place.svg';
 import onePlaceBadgeIcon from '../assets/icons/1placebadge.svg';
 import twoPlaceIcon from '../assets/icons/2place.svg';
@@ -171,14 +171,15 @@ function PodiumCard({ rank, player }) {
 }
 
 export default function LeadingPage() {
-		const navigate = useNavigate();
-		const handleLogout = () => {
+	const navigate = useNavigate();
+	const handleLogout = () => {
 		clearAuthSession();
 		navigate('/', { replace: true });
 	};
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState('global');
 	const [selectedSubject, setSelectedSubject] = useState('All Subjects');
+	const [userData, setUserData] = useState(null);
 
 	useEffect(() => {
 		document.title = 'Leaderboard | Quiz Master';
@@ -192,12 +193,38 @@ export default function LeadingPage() {
 		}
 	}, []);
 
+	useEffect(() => {
+		const fetchUserData = async () => {
+			try {
+				const res = await getUserProfile();
+				if (res.status === 'success') {
+					setUserData(res.data);
+				}
+			} catch (err) {
+				console.error('Error fetching user profile for leading page:', err);
+			}
+		};
+		fetchUserData();
+	}, []);
+
 	// produce a list annotated with `displayXp` field which is either global xp or subject xp
 	const list = useMemo(() => {
 		const arr = LEADERBOARD.map((item) => {
 			const displayXp = activeTab === 'subject' && selectedSubject && selectedSubject !== 'All Subjects'
 				? (item.xpBySubject?.[selectedSubject] || 0)
 				: item.xp;
+
+			if (item.id === 42 && userData) {
+				return {
+					...item,
+					name: `You (${userData.fullname})`,
+					xp: userData.current_xp,
+					level: userData.level?.level_no || 1,
+					displayXp: activeTab === 'subject' && selectedSubject && selectedSubject !== 'All Subjects'
+						? 0 // default subject xp to 0 since db profile has no subject xp mapping
+						: userData.current_xp,
+				};
+			}
 
 			return { ...item, displayXp };
 		});
@@ -206,7 +233,7 @@ export default function LeadingPage() {
 		arr.sort((a, b) => b.displayXp - a.displayXp);
 
 		return arr;
-	}, [activeTab, selectedSubject]);
+	}, [activeTab, selectedSubject, userData]);
 
 	const topThree = list.slice(0, 3);
 	const remaining = list.slice(3);
