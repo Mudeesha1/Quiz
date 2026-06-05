@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { clearAuthSession } from '../services/authService';
 import {
 	ArrowRight,
 	BookOpen,
@@ -135,7 +137,13 @@ function Glyph({ icon: Icon, className = '', size = 20, strokeWidth = 2.25 }) {
 }
 
 export default function QuizPage() {
+	const navigate = useNavigate();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+
+	const handleLogout = () => {
+		clearAuthSession();
+		navigate('/', { replace: true });
+	};
 	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedGrade, setSelectedGrade] = useState('Grade 4');
 	const [selectedSubject, setSelectedSubject] = useState('All Subjects');
@@ -170,6 +178,7 @@ export default function QuizPage() {
 				<StudentHeader
 					onMenuClick={() => setSidebarOpen((value) => !value)}
 					avatarSrc="https://lh3.googleusercontent.com/aida-public/AB6AXuAk9z5GonZb0oXkuFqVzg5kIs9iHpOdeW7UmSYcA66ODqhlLo_pSWuPNl87YJ70E4hZwQMlK58F6_xTj3yfLT3gh_iSDZueouFRp74GfkED0XfiPl3jJQ0bvVM1d8JsGp9OMW2fg3qdMh7_6lcKZkYwAR9aMd4hHoPk3DWUa18gUsSaiw1OsEwGYengpCade_72zEWXAxuSCiW9uklJ-5qCSewEo2gsZWHs0BbD_PNHxThTnWTZN80kAzaZgPfTBsgQBlpuPdmdhB8"
+					onLogout={handleLogout}
 				/>
 
 				<div className="px-4 py-6 mx-auto space-y-6 max-w-container-max md:px-margin-desktop md:py-8">

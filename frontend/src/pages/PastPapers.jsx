@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { clearAuthSession } from '../services/authService';
 import {
 	ArrowRight,
 	BookOpen,
@@ -100,9 +102,15 @@ function Glyph({ icon: Icon, className = '', size = 20, strokeWidth = 2.25 }) {
 }
 
 export default function PastPapers() {
+	const navigate = useNavigate();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [searchTerm, setSearchTerm] = useState('');
-
+	
+	const handleLogout = () => {
+		clearAuthSession();
+		navigate('/', { replace: true });
+	};
+	
 	useEffect(() => {
 		document.title = 'Past Papers | Quiz Master';
 
@@ -128,6 +136,7 @@ export default function PastPapers() {
 				<StudentHeader
 					onMenuClick={() => setSidebarOpen((value) => !value)}
 					avatarSrc="https://lh3.googleusercontent.com/aida-public/AB6AXuBwL7C2RnqP7JPAkLxpyr0XF9VOGdFnbu3lCMiZWWTfG6egKHfrEzlB3CaSJgFni3hTSJ4ITTw5VkekRwfneY451tDxcukUjWX_lIwxbF9ZlYxU0DREjnWSnROtcA8zTjvGjZau4iO_lydb1lk3Ba49gRr11SYaFfEX2vAO5GCeUT4mqQnihaCr_Tvptg7E8MDEDs2SHuuAyLkIB_ZAcesQALPKuhbTev7DwyUHksdIl5I4aDkVSqDKTWTO03OwDDEw9Hk88rcsyWk"
+					onLogout={handleLogout}
 				/>
 
 				<div className="px-4 py-6 mx-auto space-y-6 max-w-container-max md:px-margin-desktop md:py-8">
@@ -156,7 +165,7 @@ export default function PastPapers() {
 
 					<section className="grid grid-cols-12 gap-4 md:gap-gutter">
 						<div className="col-span-12 lg:col-span-3">
-							<Card className="rounded-[2rem] border border-outline-variant bg-surface-container-lowest shadow-sm">
+							{/* <Card className="rounded-[2rem] border border-outline-variant bg-surface-container-lowest shadow-sm">
 								<CardHeader className="px-6 py-5 border-b border-outline-variant">
 									<h3 className="flex items-center gap-1.5 text-headline-md font-headline-md text-xl font-extrabold text-on-surface">
 										<LineChart size={18} strokeWidth={2.25} />
@@ -180,9 +189,9 @@ export default function PastPapers() {
 										</div>
 									</div>
 								</CardContent>
-							</Card>
+							</Card> */}
 
-							<Card className="mt-6 rounded-[2rem] border border-outline-variant bg-surface-container-lowest shadow-sm">
+							<Card className=" rounded-[2rem] border border-outline-variant bg-surface-container-lowest shadow-sm">
 								<CardHeader className="px-6 py-5 border-b border-outline-variant">
 									<h2 className="text-headline-md font-headline-md">Quick Tips</h2>
 								</CardHeader>

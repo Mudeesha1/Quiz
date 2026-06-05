@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { clearAuthSession } from '../services/authService';
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -73,6 +74,11 @@ function FallbackImage({ title = 'Quiz Master Visual' }) {
 
 export default function QuizCard() {
 	const navigate = useNavigate();
+
+	const handleLogout = () => {
+		clearAuthSession();
+		navigate('/', { replace: true });
+	};
 	const totalQuestions = QUESTIONS.length;
 	const initialQuestionIndex = Math.max(0, Math.min(QUIZ_PROGRESS.currentQuestion - 1, totalQuestions - 1));
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialQuestionIndex);
@@ -193,6 +199,7 @@ export default function QuizCard() {
 				<StudentHeader
 					onMenuClick={() => setSidebarOpen((value) => !value)}
 					avatarSrc="https://api.dicebear.com/9.x/lorelei-neutral/svg?seed=Arjun&backgroundColor=d1d4f9"
+					onLogout={handleLogout}
 				/>
 
 				<div className="px-4 py-3 border-b border-outline-variant bg-surface-container-low md:px-margin-desktop">

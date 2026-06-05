@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { clearAuthSession } from '../services/authService';
 import {
 	Award,
 	BookOpen,
@@ -117,7 +119,13 @@ function ProfileBadge({ item }) {
 }
 
 export default function StudentProfile() {
+	const navigate = useNavigate();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+
+	const handleLogout = () => {
+		clearAuthSession();
+		navigate('/', { replace: true });
+	};
 	const [profileModalOpen, setProfileModalOpen] = useState(false);
 
 	// Profile name + DiceBear avatar seed/style
@@ -148,7 +156,7 @@ export default function StudentProfile() {
 			<StudentSidebar items={NAV_ITEMS} open={sidebarOpen} onClose={() => setSidebarOpen(false)} rankLabel="#42" />
 
 			<main className="min-h-screen pb-12 ml-0 md:ml-64">
-				<StudentHeader onMenuClick={() => setSidebarOpen((value) => !value)} avatarSrc={getAvatarUrl(avatarSeed)} />
+				<StudentHeader onMenuClick={() => setSidebarOpen((value) => !value)} avatarSrc={getAvatarUrl(avatarSeed)} onLogout={handleLogout} />
 
 				<div className="px-4 py-6 mx-auto space-y-6 max-w-container-max md:px-margin-desktop md:py-8">
 					<section className="grid grid-cols-12 gap-4 md:gap-gutter">
