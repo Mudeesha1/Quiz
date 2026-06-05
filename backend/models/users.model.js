@@ -56,6 +56,22 @@ const User = sequelize.define(
 			onUpdate: "CASCADE",
 			onDelete: "RESTRICT",
 		},
+		current_xp: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+			defaultValue: 0,
+		},
+		current_level_id: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+			defaultValue: 1,
+			references: {
+				model: "user_levels",
+				key: "id",
+			},
+			onUpdate: "CASCADE",
+			onDelete: "RESTRICT",
+		},
 	},
 	{
 		tableName: "users",
