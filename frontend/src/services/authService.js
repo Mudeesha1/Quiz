@@ -63,8 +63,15 @@ function saveAuthSession(payload) {
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
 }
 
+let profileCachePromise = null;
+
+function clearProfileCache() {
+  profileCachePromise = null;
+}
+
 function clearAuthSession() {
   localStorage.removeItem(AUTH_STORAGE_KEY);
+  profileCachePromise = null;
 }
 
 function getAuthSession() {
@@ -79,4 +86,40 @@ function getAuthSession() {
   }
 }
 
-export { registerUser, loginUser, saveAuthSession, clearAuthSession, getAuthSession };
+async function getUserProfile() {
+  const session = getAuthSession();
+  
+  if (!session?.tokens?.accessToken) {
+    throw new Error("No valid session found");
+  }
+
+  if (profileCachePromise) {
+    return profileCachePromise;
+  }
+
+  profileCachePromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/profile`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.tokens.accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        profileCachePromise = null; // Reset cache on error
+        return parseErrorResponse(response);
+      }
+
+      return await response.json();
+    } catch (err) {
+      profileCachePromise = null; // Reset cache on error
+      throw err;
+    }
+  })();
+
+  return profileCachePromise;
+}
+
+export { registerUser, loginUser, saveAuthSession, clearAuthSession, getAuthSession, getUserProfile, clearProfileCache };
