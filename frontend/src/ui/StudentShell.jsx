@@ -68,7 +68,7 @@ export function StudentSidebar({ items, open, onClose, rankLabel = '#42' }) {
   );
 }
 
-export function StudentHeader({ onMenuClick, avatarSrc, logoutLabel = 'Logout' }) {
+export function StudentHeader({ onMenuClick, avatarSrc, logoutLabel = 'Logout', onLogout }) {
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between w-full px-4 py-3 shadow-sm bg-surface md:px-margin-desktop md:py-4">
       <div className="flex items-center gap-4">
@@ -83,7 +83,10 @@ export function StudentHeader({ onMenuClick, avatarSrc, logoutLabel = 'Logout' }
         </div>
         <div className="flex items-center gap-2 px-3 md:gap-3 md:px-6">
           <img alt="Student Avatar" className="object-cover w-8 h-8 border-2 rounded-full border-primary md:h-10 md:w-10" src={avatarSrc} />
-          <button className="chunky-button-primary flex w-full items-center justify-center gap-2 rounded-full bg-error px-6 py-2.5 text-sm font-bold text-white shadow-[0px_4px_0px_0px_#600e0e] transition-all active:translate-y-1 active:shadow-none sm:w-auto md:px-8 md:py-3 md:text-base">
+          <button
+            onClick={onLogout}
+            className="chunky-button-primary flex w-full items-center justify-center gap-2 rounded-full bg-error px-6 py-2.5 text-sm font-bold text-white shadow-[0px_4px_0px_0px_#600e0e] transition-all active:translate-y-1 active:shadow-none sm:w-auto md:px-8 md:py-3 md:text-base"
+          >
             {logoutLabel}
             <LogOut size={22} className="text-white" strokeWidth={2.25} />
           </button>

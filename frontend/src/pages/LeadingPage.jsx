@@ -10,6 +10,8 @@ import {
 	TrendingUp,
 	Trophy,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { clearAuthSession } from '../services/authService';
 import onePlaceIcon from '../assets/icons/1place.svg';
 import onePlaceBadgeIcon from '../assets/icons/1placebadge.svg';
 import twoPlaceIcon from '../assets/icons/2place.svg';
@@ -169,6 +171,11 @@ function PodiumCard({ rank, player }) {
 }
 
 export default function LeadingPage() {
+		const navigate = useNavigate();
+		const handleLogout = () => {
+		clearAuthSession();
+		navigate('/', { replace: true });
+	};
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState('global');
 	const [selectedSubject, setSelectedSubject] = useState('All Subjects');
@@ -212,6 +219,7 @@ export default function LeadingPage() {
 				<StudentHeader
 					onMenuClick={() => setSidebarOpen((value) => !value)}
 					avatarSrc="https://api.dicebear.com/9.x/lorelei-neutral/svg?seed=Arjun&backgroundColor=d1d4f9"
+					onLogout={handleLogout}
 				/>
 
 				<div className="px-4 py-6 mx-auto space-y-8 max-w-container-max md:px-margin-desktop md:py-8">
