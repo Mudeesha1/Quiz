@@ -79,6 +79,8 @@ const loginController = async (req, res, next) => {
 				email: user.email,
 				profile_url: user.profile_url,
 				grade_id: user.grade_id,
+				current_xp: user.current_xp,
+				current_level_id: user.current_level_id,
 			},
 			tokens,
 		});
