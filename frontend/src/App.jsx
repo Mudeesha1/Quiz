@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'r
 import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
+import ForgetPassWord from './pages/ForgetPassWord';
+import ResetPassword from './pages/ResetPassword';
 import StudentDashboard from './pages/StudentDashboard';
 import QuizPage from './pages/QuizPage';
 import QuizCard from './pages/QuizCard';
@@ -31,6 +33,8 @@ function PageTitleManager() {
       '/': 'Quiz Master',
       '/registration': 'Registration | Quiz Master',
       '/login': 'Student Login | Quiz Master',
+      '/forgot-password': 'Forgot Password | Quiz Master',
+      '/reset-password': 'Reset Password | Quiz Master',
       '/dashboard': 'Dashboard | Quiz Master',
       '/quizzes': 'Quiz Quest | Quiz Master',
       '/quiz-card': 'Mission Attempt | Quiz Master',
@@ -54,6 +58,8 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/registration" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgetPassWord />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/dashboard"
           element={

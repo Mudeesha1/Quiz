@@ -1,5 +1,8 @@
 const express = require("express");
-const { getGrades, getSubjectsByGrade, getTopRankedUsers } = require("./controllers/grade.controller");
+const { getGrades, getSubjectsByGrade, getTopRankedUsers, getLeaderboard } = require("./controllers/grade.controller");
+const { getPapers, downloadPaper, bookmarkPaper, completePaper } = require("./controllers/paper.controller");
+const { getQuizzes, getQuizById, submitQuiz } = require("./controllers/quiz.controller");
+const { requireUser } = require("../../middleware/auth");
 
 const applicationRoutes = express.Router();
 
@@ -15,8 +18,19 @@ applicationRoutes.get("/health", (req, res) => {
 applicationRoutes.get("/grades", getGrades);
 applicationRoutes.get("/grades/:gradeId/subjects", getSubjectsByGrade);
 applicationRoutes.get("/leaderboard/top-3", getTopRankedUsers);
-// Protect following routes with auth + role check
 
-// protected routes for registered users
+// Protected routes for registered users
+applicationRoutes.get("/papers", requireUser, getPapers);
+applicationRoutes.post("/papers/:paperId/download", requireUser, downloadPaper);
+applicationRoutes.post("/papers/:paperId/bookmark", requireUser, bookmarkPaper);
+applicationRoutes.post("/papers/:paperId/complete", requireUser, completePaper);
 
-module.exports = applicationRoutes;
+// Quizzes
+applicationRoutes.get("/quizzes", requireUser, getQuizzes);
+applicationRoutes.get("/quizzes/:quizId", requireUser, getQuizById);
+applicationRoutes.post("/quizzes/:quizId/submit", requireUser, submitQuiz);
+
+// Leaderboard
+applicationRoutes.get("/leaderboard", requireUser, getLeaderboard);
+
+module.exports = applicationRoutes;

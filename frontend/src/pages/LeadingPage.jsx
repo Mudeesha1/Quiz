@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { clearAuthSession, getUserProfile } from '../services/authService';
+import { getLeaderboard } from '../services/appService';
 import onePlaceIcon from '../assets/icons/1place.svg';
 import onePlaceBadgeIcon from '../assets/icons/1placebadge.svg';
 import twoPlaceIcon from '../assets/icons/2place.svg';
@@ -27,79 +28,22 @@ const NAV_ITEMS = [
 	{ label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
 	{ label: 'Quizzes', icon: BookOpen, to: '/quizzes' },
 	{ label: 'Past Papers', icon: FileText, to: '/past-papers' },
-	{ label: 'Adventure Map', icon: Map, to: '/dashboard' },
 	{ label: 'Leading', icon: Trophy, to: '/leading', active: true },
 	{ label: 'Profile', icon: CircleUser, to: '/profile' },
 ];
 
 const SUBJECTS = ['All Subjects', 'Mathematics', 'Science', 'English', 'Environment'];
 
-// Leaderboard items now include per-subject XP in `xpBySubject` so we can sort both global and subject rankings
-const LEADERBOARD = [
-	{
-		id: 1,
-		name: 'Kasun Silva',
-		xp: 18900,
-		level: 22,
-		badge: 'Grand Master',
-		trend: 'Top',
-		xpBySubject: { Mathematics: 12500, Science: 3400, English: 2000, Environment: 1000 },
-	},
-	{
-		id: 2,
-		name: 'Amara Perera',
-		xp: 14250,
-		level: 20,
-		badge: '12 Day Streak',
-		trend: 'Hot',
-		xpBySubject: { Mathematics: 4200, Science: 7600, English: 1200, Environment: 750 },
-	},
-	{
-		id: 3,
-		name: 'Mila Rose',
-		xp: 12800,
-		level: 19,
-		badge: 'Rising Star',
-		trend: 'Rise',
-		xpBySubject: { Mathematics: 2400, Science: 2100, English: 6800, Environment: 1500 },
-	},
-	{
-		id: 4,
-		name: 'Dilshan Fernando',
-		xp: 11200,
-		level: 18,
-		badge: 'Steady',
-		trend: '+2',
-		xpBySubject: { Mathematics: 8200, Science: 1400, English: 600, Environment: 0 },
-	},
-	{
-		id: 5,
-		name: 'Sahan Kumara',
-		xp: 10950,
-		level: 17,
-		badge: 'Steady',
-		trend: 'Hold',
-		xpBySubject: { Mathematics: 4300, Science: 4600, English: 1200, Environment: 850 },
-	},
-	{
-		id: 42,
-		name: 'You (Arjun)',
-		xp: 4280,
-		level: 12,
-		badge: 'Keep going!',
-		trend: 'You',
-		xpBySubject: { Mathematics: 600, Science: 1500, English: 400, Environment: 1780 },
-	},
-	{
-		id: 43,
-		name: 'Priya Naidoo',
-		xp: 4150,
-		level: 11,
-		badge: 'Steady',
-		trend: 'Hold',
-		xpBySubject: { Mathematics: 1000, Science: 800, English: 2100, Environment: 250 },
-	},
-];
+function getProfileImageUrl(profileUrl, name) {
+	const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+	if (profileUrl) {
+		if (profileUrl.startsWith('/')) {
+			return `${API_BASE_URL}${profileUrl}`;
+		}
+		return profileUrl;
+	}
+	return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
+}
 
 function PodiumCard({ rank, player }) {
 	const tones = {
@@ -148,7 +92,7 @@ function PodiumCard({ rank, player }) {
 				</div>
 				<div className="relative w-24 h-24 mx-auto mb-4 border-4 border-white rounded-full bg-primary-fixed">
 					<img
-						src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(player.name)}&backgroundColor=b6e3f4,c0aede,d1d4f9`}
+						src={getProfileImageUrl(player.profile_url, player.name)}
 						alt={player.name}
 						className="object-cover w-full h-full rounded-full"
 					/>
@@ -181,6 +125,11 @@ export default function LeadingPage() {
 	const [selectedSubject, setSelectedSubject] = useState('All Subjects');
 	const [userData, setUserData] = useState(null);
 
+	// Backend leaderboard state
+	const [leaderboardData, setLeaderboardData] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+
 	useEffect(() => {
 		document.title = 'Leaderboard | Quiz Master';
 
@@ -207,45 +156,58 @@ export default function LeadingPage() {
 		fetchUserData();
 	}, []);
 
-	// produce a list annotated with `displayXp` field which is either global xp or subject xp
-	const list = useMemo(() => {
-		const arr = LEADERBOARD.map((item) => {
-			const displayXp = activeTab === 'subject' && selectedSubject && selectedSubject !== 'All Subjects'
-				? (item.xpBySubject?.[selectedSubject] || 0)
-				: item.xp;
-
-			if (item.id === 42 && userData) {
-				return {
-					...item,
-					name: `You (${userData.fullname})`,
-					xp: userData.current_xp,
-					level: userData.level?.level_no || 1,
-					displayXp: activeTab === 'subject' && selectedSubject && selectedSubject !== 'All Subjects'
-						? 0 // default subject xp to 0 since db profile has no subject xp mapping
-						: userData.current_xp,
-				};
+	// Fetch leaderboard ranking from API
+	useEffect(() => {
+		const fetchLeaderboardData = async () => {
+			try {
+				setLoading(true);
+				setError(null);
+				const subjectParam = activeTab === 'global' ? 'All Subjects' : selectedSubject;
+				const res = await getLeaderboard(subjectParam);
+				if (res.status === 'success') {
+					setLeaderboardData(res.data || []);
+				}
+			} catch (err) {
+				console.error('Error loading leaderboard:', err);
+				setError('Failed to load leaderboard data.');
+			} finally {
+				setLoading(false);
 			}
+		};
+		fetchLeaderboardData();
+	}, [activeTab, selectedSubject]);
 
-			return { ...item, displayXp };
+	const list = useMemo(() => {
+		return leaderboardData.map((item) => {
+			const isCurrentUser = userData && Number(item.id) === Number(userData.id);
+			return {
+				...item,
+				isCurrentUser,
+				name: isCurrentUser ? `You (${item.name})` : item.name,
+				displayXp: item.xp,
+			};
 		});
-
-		// sort descending by displayXp
-		arr.sort((a, b) => b.displayXp - a.displayXp);
-
-		return arr;
-	}, [activeTab, selectedSubject, userData]);
+	}, [leaderboardData, userData]);
 
 	const topThree = list.slice(0, 3);
 	const remaining = list.slice(3);
 
+	const activeParticipantsCount = useMemo(() => {
+		return list.filter(item => item.xp > 0).length;
+	}, [list]);
+
+	const isLeaderboardUnlocked = activeTab === 'global' || activeParticipantsCount >= 3;
+
 	return (
 		<div className="min-h-screen overflow-x-hidden bg-surface text-on-surface font-body-md">
-			<StudentSidebar items={NAV_ITEMS} open={sidebarOpen} onClose={() => setSidebarOpen(false)} rankLabel="#42" />
+			<StudentSidebar items={NAV_ITEMS} open={sidebarOpen} onClose={() => setSidebarOpen(false)} rankLabel={userData ? `#${userData.rank || '00'}` : '#--'} />
 
 			<main className="min-h-screen pb-12 ml-0 md:ml-64">
 				<StudentHeader
 					onMenuClick={() => setSidebarOpen((value) => !value)}
-					avatarSrc="https://api.dicebear.com/9.x/lorelei-neutral/svg?seed=Arjun&backgroundColor=d1d4f9"
+					avatarSrc={userData ? getProfileImageUrl(userData.profile_url, userData.fullname) : undefined}
+					currentXp={userData ? userData.current_xp : 0}
+					levelName={userData?.level?.level_name || 'Explorer'}
 					onLogout={handleLogout}
 				/>
 
@@ -273,7 +235,7 @@ export default function LeadingPage() {
 
 							<div className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-full bg-white/15">
 								<Sparkles size={16} strokeWidth={2.5} />
-								12,402 Students Participating
+								{list.length} Students Participating
 							</div>
 						</div>
 					</section>
@@ -325,67 +287,101 @@ export default function LeadingPage() {
 						) : null}
 					</section>
 
-					<section className="grid items-end gap-6 md:grid-cols-3 md:gap-gutter">
-						{topThree[1] ? <PodiumCard rank={2} player={topThree[1]} /> : null}
-						{topThree[0] ? <PodiumCard rank={1} player={topThree[0]} /> : null}
-						{topThree[2] ? <PodiumCard rank={3} player={topThree[2]} /> : null}
-					</section>
+					{loading ? (
+						<div className="flex flex-col items-center justify-center py-20 bg-surface-container-lowest rounded-[2rem] border border-outline-variant shadow-sm">
+							<div className="w-12 h-12 border-4 rounded-full border-primary border-t-transparent animate-spin"></div>
+							<p className="mt-4 text-on-surface-variant text-sm font-semibold">Loading Hall of Fame...</p>
+						</div>
+					) : error ? (
+						<Card className="rounded-[2rem] border-2 border-dashed border-error bg-surface-container-lowest shadow-sm">
+							<CardContent className="flex flex-col items-center justify-center py-16 text-center">
+								<p className="text-error font-semibold mb-4">{error}</p>
+								<ButtonPrimary onClick={() => window.location.reload()} className="rounded-full bg-primary px-6 py-3 text-button-text text-white">
+									Retry
+								</ButtonPrimary>
+							</CardContent>
+						</Card>
+					) : !isLeaderboardUnlocked ? (
+						<Card className="rounded-[2rem] border-2 border-dashed border-outline-variant bg-surface-container-lowest shadow-sm ">
+							<CardContent className="flex flex-col items-center justify-center py-16 text-center">
+								<Trophy size={56} className="mb-4 text-outline-variant" strokeWidth={1.75} />
+								<h3 className="mb-2 text-headline-md font-headline-md text-on-surface-variant">Leaderboard Locked</h3>
+								<p className="max-w-full mb-6 text-sm text-on-surface-variant">
+									At least 3 students must complete quizzes in <strong>{selectedSubject}</strong> to unlock the subject rankings. Currently, only {activeParticipantsCount} student(s) have earned XP in this subject.
+								</p>
+								<ButtonPrimary
+									onClick={() => navigate('/quizzes')}
+									className="px-6 py-3 bg-primary text-button-text text-white rounded-full transition-all hover:scale-105 active:scale-95"
+								>
+									Start a Quiz
+								</ButtonPrimary>
+							</CardContent>
+						</Card>
+					) : (
+						<>
+							<section className="grid items-end gap-6 md:grid-cols-3 md:gap-gutter">
+								{topThree[1] ? <PodiumCard rank={2} player={topThree[1]} /> : null}
+								{topThree[0] ? <PodiumCard rank={1} player={topThree[0]} /> : null}
+								{topThree[2] ? <PodiumCard rank={3} player={topThree[2]} /> : null}
+							</section>
 
-					<Card className="rounded-[2rem] border border-outline-variant bg-surface-container-lowest p-4 shadow-sm md:p-8">
-						<CardContent className="space-y-4">
-							<div className="flex flex-col gap-2 px-2 md:flex-row md:items-center md:justify-between">
-								<h2 className="text-headline-md font-headline-md">Full Rankings</h2>
-								<p className="text-sm font-bold text-on-surface-variant">Track your progress and challenge the top 10.</p>
-							</div>
+							<Card className="rounded-[2rem] border border-outline-variant bg-surface-container-lowest p-4 shadow-sm md:p-8">
+								<CardContent className="space-y-4">
+									<div className="flex flex-col gap-2 px-2 md:flex-row md:items-center md:justify-between">
+										<h2 className="text-headline-md font-headline-md">Full Rankings</h2>
+										<p className="text-sm font-bold text-on-surface-variant">Track your progress and challenge the top 10.</p>
+									</div>
 
-							<div className="space-y-3">
-								{remaining.map((student, idx) => {
-									const isCurrentUser = student.id === 42;
-									const rankNumber = idx + 4; // topThree are 1-3, remaining start at 4
+									<div className="space-y-3">
+										{remaining.length > 0 ? (
+											remaining.map((student, idx) => {
+												const isCurrentUser = student.isCurrentUser;
+												const rankNumber = idx + 4;
 
-									return (
-										<div
-											key={student.id}
-											className={`flex items-center gap-3 rounded-2xl border p-4 transition-all ${
-												isCurrentUser
-													? 'scale-[1.01] border-primary bg-primary-fixed/30 shadow-sm'
-													: 'border-transparent hover:border-outline-variant hover:bg-surface-container-low'
-											}`}
-										>
-											<span className={`w-9 text-center text-lg font-black ${isCurrentUser ? 'text-primary' : 'text-on-surface-variant'}`}>{rankNumber}</span>
+												return (
+													<div
+														key={student.id}
+														className={`flex items-center gap-3 rounded-2xl border p-4 transition-all ${
+															isCurrentUser
+																? 'scale-[1.01] border-primary bg-primary-fixed/30 shadow-sm'
+																: 'border-transparent hover:border-outline-variant hover:bg-surface-container-low'
+														}`}
+													>
+														<span className={`w-9 text-center text-lg font-black ${isCurrentUser ? 'text-primary' : 'text-on-surface-variant'}`}>{rankNumber}</span>
 
-											<img
-												src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(student.name)}&backgroundColor=b6e3f4,c0aede,d1d4f9`}
-												alt={student.name}
-												className={`h-12 w-12 rounded-full border-2 object-cover ${isCurrentUser ? 'border-primary' : 'border-white'}`}
-											/>
+														<img
+															src={getProfileImageUrl(student.profile_url, student.name)}
+															alt={student.name}
+															className={`h-12 w-12 rounded-full border-2 object-cover ${isCurrentUser ? 'border-primary' : 'border-white'}`}
+														/>
 
-											<div className="flex-1 min-w-0">
-												<p className={`truncate text-base font-bold ${isCurrentUser ? 'text-primary' : 'text-on-surface'}`}>{student.name}</p>
-												<div className="flex items-center gap-2 mt-1">
-													<span className={`rounded-lg px-2 py-0.5 text-xs font-bold ${isCurrentUser ? 'bg-primary text-white' : 'bg-surface-container-highest text-on-surface-variant'}`}>
-														Level {student.level}
-													</span>
-													<span className={`text-xs font-bold ${isCurrentUser ? 'text-primary' : 'text-on-surface-variant'}`}>{student.badge}</span>
-												</div>
+														<div className="flex-1 min-w-0">
+															<p className={`truncate text-base font-bold ${isCurrentUser ? 'text-primary' : 'text-on-surface'}`}>{student.name}</p>
+															<div className="flex items-center gap-2 mt-1">
+																<span className={`rounded-lg px-2 py-0.5 text-xs font-bold ${isCurrentUser ? 'bg-primary text-white' : 'bg-surface-container-highest text-on-surface-variant'}`}>
+																	Level {student.level}
+																</span>
+																<span className={`text-xs font-bold ${isCurrentUser ? 'text-primary' : 'text-on-surface-variant'}`}>{student.badge}</span>
+															</div>
+														</div>
+
+														<div className="text-right">
+															<p className={`text-base font-black ${isCurrentUser ? 'text-primary' : 'text-on-surface'}`}>{(student.displayXp ?? student.xp).toLocaleString()} XP</p>
+															<p className={`text-xs font-bold ${isCurrentUser ? 'text-primary/80' : 'text-on-surface-variant'}`}>{student.trend}</p>
+														</div>
+													</div>
+												);
+											})
+										) : (
+											<div className="text-center py-6 text-on-surface-variant font-bold text-sm">
+												No other participants ranked yet.
 											</div>
-
-											<div className="text-right">
-												<p className={`text-base font-black ${isCurrentUser ? 'text-primary' : 'text-on-surface'}`}>{(student.displayXp ?? student.xp).toLocaleString()} XP</p>
-												<p className={`text-xs font-bold ${isCurrentUser ? 'text-primary/80' : 'text-on-surface-variant'}`}>{student.trend}</p>
-											</div>
-										</div>
-									);
-								})}
-							</div>
-
-							<div className="flex flex-col justify-center gap-3 pt-2 sm:flex-row">
-								<ButtonSecondary className="w-full py-3 text-sm font-bold border-2 border-primary text-primary hover:bg-primary/5 sm:w-auto sm:px-8">
-									View All 100 Scholars
-								</ButtonSecondary>
-							</div>
-						</CardContent>
-					</Card>
+										)}
+									</div>
+								</CardContent>
+							</Card>
+						</>
+					)}
 				</div>
 			</main>
 

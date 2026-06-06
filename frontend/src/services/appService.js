@@ -1,3 +1,5 @@
+import { getAuthSession, clearProfileCache } from "./authService";
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 
@@ -54,6 +56,165 @@ export async function getTopRankedUsers() {
     headers: {
       "Content-Type": "application/json",
     },
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+export async function getPapersAndFilters() {
+  const session = getAuthSession();
+  const headers = { "Content-Type": "application/json" };
+  if (session?.tokens?.accessToken) {
+    headers["Authorization"] = `Bearer ${session.tokens.accessToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/app/papers`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+export async function downloadPaper(paperId) {
+  const session = getAuthSession();
+  const headers = { "Content-Type": "application/json" };
+  if (session?.tokens?.accessToken) {
+    headers["Authorization"] = `Bearer ${session.tokens.accessToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/app/papers/${paperId}/download`, {
+    method: "POST",
+    headers,
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+export async function bookmarkPaper(paperId) {
+  const session = getAuthSession();
+  const headers = { "Content-Type": "application/json" };
+  if (session?.tokens?.accessToken) {
+    headers["Authorization"] = `Bearer ${session.tokens.accessToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/app/papers/${paperId}/bookmark`, {
+    method: "POST",
+    headers,
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+export async function completePaper(paperId) {
+  const session = getAuthSession();
+  const headers = { "Content-Type": "application/json" };
+  if (session?.tokens?.accessToken) {
+    headers["Authorization"] = `Bearer ${session.tokens.accessToken}`;
+  }
+
+  // Clear cache since marking a paper as completed could affect profile achievements
+  clearProfileCache();
+
+  const response = await fetch(`${API_BASE_URL}/app/papers/${paperId}/complete`, {
+    method: "POST",
+    headers,
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+export async function getQuizzes() {
+  const session = getAuthSession();
+  const headers = { "Content-Type": "application/json" };
+  if (session?.tokens?.accessToken) {
+    headers["Authorization"] = `Bearer ${session.tokens.accessToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/app/quizzes`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+export async function getQuizById(quizId) {
+  const session = getAuthSession();
+  const headers = { "Content-Type": "application/json" };
+  if (session?.tokens?.accessToken) {
+    headers["Authorization"] = `Bearer ${session.tokens.accessToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/app/quizzes/${quizId}`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+export async function submitQuiz(quizId, payload) {
+  const session = getAuthSession();
+  const headers = { "Content-Type": "application/json" };
+  if (session?.tokens?.accessToken) {
+    headers["Authorization"] = `Bearer ${session.tokens.accessToken}`;
+  }
+
+  // Clear cache since we are submitting a quiz and updating XP/Level
+  clearProfileCache();
+
+  const response = await fetch(`${API_BASE_URL}/app/quizzes/${quizId}/submit`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+export async function getLeaderboard(subject) {
+  const session = getAuthSession();
+  const headers = { "Content-Type": "application/json" };
+  if (session?.tokens?.accessToken) {
+    headers["Authorization"] = `Bearer ${session.tokens.accessToken}`;
+  }
+
+  const queryParam = subject ? `?subject=${encodeURIComponent(subject)}` : '';
+  const response = await fetch(`${API_BASE_URL}/app/leaderboard${queryParam}`, {
+    method: "GET",
+    headers,
   });
 
   if (!response.ok) {

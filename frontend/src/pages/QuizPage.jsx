@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clearAuthSession } from '../services/authService';
+import { getQuizzes } from '../services/appService';
 import {
 	ArrowRight,
 	BookOpen,
@@ -36,100 +37,13 @@ const NAV_ITEMS = [
 	{ label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
 	{ label: 'Quizzes', icon: BookOpen, to: '/quizzes', active: true },
 	{ label: 'Past Papers', icon: FileText, to: '/past-papers' },
-	{ label: 'Adventure Map', icon: Map, to: '/dashboard' },
 	{ label: 'Leading', icon: Trophy, to: '/leading' },
 	{ label: 'Profile', icon: CircleUser, to: '/profile' },
 ];
 
-const FILTER_OPTIONS = {
-	grades: ['Grade 4', 'Grade 5', 'Grade 6'],
-	subjects: ['All Subjects', 'Mathematics', 'Science', 'English Language'],
-};
-
 const QUEST_TABS = [
 	{ key: 'available', label: 'Available Quests' },
 	{ key: 'completed', label: 'Completed Quests' },
-];
-
-const QUIZ_CARDS = [
-	{
-		subject: 'Mathematics',
-		grade: 'Grade 4',
-		title: 'Mastering Fractions',
-		description: 'Can you divide the pizza perfectly? Test your fraction skills here!',
-		reward: '+50 XP',
-		rewardIcon: Flame,
-		progress: 0,
-		progressLabel: '0%',
-		buttonLabel: 'Start Quiz',
-		tagVariant: 'primary',
-		status: 'available',
-	},
-	{
-		subject: 'Science',
-		grade: 'Grade 4',
-		title: 'Animals & Environment',
-		description: 'Learn about habitats, food chains, and how animals survive in the wild.',
-		reward: '+50 XP',
-		rewardIcon: Flame,
-		progress: 33,
-		progressLabel: '33%',
-		buttonLabel: 'Start Quiz',
-		tagVariant: 'success',
-		status: 'available',
-	},
-	{
-		subject: 'English',
-		grade: 'Grade 4',
-		title: 'Punctuation Power',
-		description: 'Comma, period, or exclamation mark? Put them in the right places!',
-		reward: '+40 XP',
-		rewardIcon: Flame,
-		progress: 0,
-		progressLabel: 'New',
-		buttonLabel: 'Start Quiz',
-		tagVariant: 'primary',
-		status: 'available',
-	},
-    {
-		subject: 'Science',
-		grade: 'Grade 4',
-		title: 'Animals & Environment',
-		description: 'Learn about habitats, food chains, and how animals survive in the wild.',
-		reward: '+50 XP',
-		rewardIcon: Flame,
-		progress: 33,
-		progressLabel: '33%',
-		buttonLabel: 'Start Quiz',
-		tagVariant: 'success',
-		status: 'available',
-	},
-	{
-		subject: 'English',
-		grade: 'Grade 4',
-		title: 'Punctuation Power',
-		description: 'Comma, period, or exclamation mark? Put them in the right places!',
-		reward: '+40 XP',
-		rewardIcon: Flame,
-		progress: 0,
-		progressLabel: 'New',
-		buttonLabel: 'Start Quiz',
-		tagVariant: 'primary',
-		status: 'available',
-	},
-	{
-		subject: 'Science',
-		grade: 'Grade 5',
-		title: 'The Solar System',
-		description: 'Explore the planets and stars in our cosmic neighborhood.',
-		reward: '+75 XP',
-		rewardIcon: Flame,
-		progress: 75,
-		progressLabel: '75%',
-		buttonLabel: 'Finish Quest',
-		tagVariant: 'success',
-		status: 'available',
-	},
 ];
 
 function Glyph({ icon: Icon, className = '', size = 20, strokeWidth = 2.25 }) {
@@ -146,24 +60,46 @@ export default function QuizPage() {
 		navigate('/', { replace: true });
 	};
 	const [searchTerm, setSearchTerm] = useState('');
-	const [selectedGrade, setSelectedGrade] = useState(location.state?.grade || 'Grade 4');
+	const [selectedGrade, setSelectedGrade] = useState(location.state?.grade || 'All Grades');
 	const [selectedSubject, setSelectedSubject] = useState(location.state?.subject || 'All Subjects');
 	const [activeTab, setActiveTab] = useState('available');
 
-	useEffect(() => {
-		document.title = 'Quiz Quest | Quiz Master';
+	// API states
+	const [quizzes, setQuizzes] = useState([]);
+	const [grades, setGrades] = useState(['All Grades']);
+	const [subjects, setSubjects] = useState(['All Subjects']);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
 
-		const fontHref = 'https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;700;800;900&display=swap';
-		if (!document.querySelector(`link[href="${fontHref}"]`)) {
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = fontHref;
-			document.head.appendChild(link);
-		}
+	// Fetch quizzes and filter options on mount
+	useEffect(() => {
+		const fetchQuizzesAndFilters = async () => {
+			try {
+				setLoading(true);
+				setError(null);
+				const res = await getQuizzes();
+				if (res.status === 'success') {
+					setQuizzes(res.data.quizzes || []);
+					setGrades(res.data.grades || ['All Grades']);
+					setSubjects(res.data.subjects || ['All Subjects']);
+				}
+			} catch (err) {
+				console.error('Error loading quizzes:', err);
+				setError('Failed to load quizzes. Please try again later.');
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchQuizzesAndFilters();
 	}, []);
 
-	const visibleQuests = QUIZ_CARDS.filter((quest) => {
-		const matchesSearch = `${quest.subject} ${quest.title} ${quest.description} ${quest.reward}`.toLowerCase().includes(searchTerm.toLowerCase());
+	const handleStartQuiz = (quizId) => {
+		navigate('/quiz-card', { state: { quizId } });
+	};
+
+	const visibleQuests = quizzes.filter((quest) => {
+		const matchesSearch = `${quest.subject} ${quest.title} ${quest.description || ''} ${quest.reward}`.toLowerCase().includes(searchTerm.toLowerCase());
 		const matchesGrade = selectedGrade === 'All Grades' ? true : quest.grade === selectedGrade;
 		const matchesSubject = selectedSubject === 'All Subjects' ? true : quest.subject === selectedSubject;
 		const matchesTab = activeTab === 'available' ? quest.status !== 'completed' : quest.status === 'completed';
@@ -236,7 +172,7 @@ export default function QuizPage() {
 										onChange={(event) => setSelectedGrade(event.target.value)}
 										className="w-full px-4 py-3 pr-10 text-sm transition border-2 rounded-full outline-none appearance-none border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/15 md:py-4"
 									>
-										{FILTER_OPTIONS.grades.map((grade) => (
+										{grades.map((grade) => (
 											<option key={grade}>{grade}</option>
 										))}
 									</select>
@@ -252,7 +188,7 @@ export default function QuizPage() {
 										onChange={(event) => setSelectedSubject(event.target.value)}
 										className="w-full px-4 py-3 pr-10 text-sm transition border-2 rounded-full outline-none appearance-none border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-2 focus:ring-primary/15 md:py-4"
 									>
-										{FILTER_OPTIONS.subjects.map((subject) => (
+										{subjects.map((subject) => (
 											<option key={subject}>{subject}</option>
 										))}
 									</select>
@@ -283,11 +219,23 @@ export default function QuizPage() {
 						))}
 					</div>
 
-					{visibleQuests.length > 0 ? (
+					{loading ? (
+						<div className="flex flex-col items-center justify-center py-20 bg-surface-container-lowest rounded-[1.75rem] border border-outline-variant shadow-sm">
+							<div className="w-12 h-12 border-4 rounded-full border-primary border-t-transparent animate-spin"></div>
+							<p className="mt-4 text-on-surface-variant text-sm font-semibold">Loading available quests...</p>
+						</div>
+					) : error ? (
+						<Card className="rounded-[1.75rem] border-2 border-dashed border-error bg-surface-container-lowest shadow-sm">
+							<CardContent className="flex flex-col items-center justify-center py-16 text-center">
+								<p className="text-error font-semibold mb-4">{error}</p>
+								<ButtonPrimary onClick={() => window.location.reload()} className="rounded-full bg-primary px-6 py-3 text-button-text text-white">
+									Retry
+								</ButtonPrimary>
+							</CardContent>
+						</Card>
+					) : visibleQuests.length > 0 ? (
 						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
 							{visibleQuests.map((quest) => {
-								const rewardIcon = quest.rewardIcon;
-
 								return (
 									<Card key={`${quest.subject}-${quest.title}`} className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-outline-variant bg-surface-container-lowest shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
 										<CardContent className="flex flex-col h-full p-4">
@@ -295,8 +243,8 @@ export default function QuizPage() {
 												<Badge variant={quest.tagVariant === 'success' ? 'success' : 'primary'} className="uppercase tracking-[0.12em]">
 													{quest.subject}
 												</Badge>
-												<div className="flex items-center gap-1 font-bold text-tertiary">
-													<Glyph icon={rewardIcon} size={16} className="text-tertiary" />
+												<div className="flex items-center gap-2 px-3 py-1 border rounded-full border-tertiary-container/20 bg-tertiary-container/10 font-bold text-tertiary text-sm">
+													<Glyph icon={Flame} size={16} className="text-tertiary-container" strokeWidth={2.25} />
 													<span>{quest.reward}</span>
 												</div>
 											</div>
@@ -307,9 +255,9 @@ export default function QuizPage() {
 											</div>
 
 											<h3 className="mb-2 transition-colors text-headline-md font-headline-md group-hover:text-primary">{quest.title}</h3>
-											<p className="mb-6 text-sm grow text-on-surface-variant">{quest.description}</p>
+											<p className="mb-6 text-sm grow text-on-surface-variant">{quest.description || 'No description available for this quest.'}</p>
 
-											<ButtonPrimary className="chunky-button-primary mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-secondary-container px-5 py-3 text-button-text text-white shadow-[0px_4px_0px_0px_#b27300] transition-all hover:-translate-y-0.5 hover:shadow-[0px_6px_0px_0px_#9b5f00] active:translate-y-1">
+											<ButtonPrimary onClick={() => handleStartQuiz(quest.id)} className="chunky-button-primary mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-secondary-container px-5 py-3 text-button-text text-white shadow-[0px_4px_0px_0px_#b27300] transition-all hover:-translate-y-0.5 hover:shadow-[0px_6px_0px_0px_#9b5f00] active:translate-y-1">
 												{quest.buttonLabel}
 												<ArrowRight size={16} strokeWidth={2.25} />
 											</ButtonPrimary>
@@ -329,7 +277,7 @@ export default function QuizPage() {
 								<ButtonSecondary
 									onClick={() => {
 										setSearchTerm('');
-										setSelectedGrade('Grade 4');
+										setSelectedGrade('All Grades');
 										setSelectedSubject('All Subjects');
 										setActiveTab('available');
 									}}
@@ -340,12 +288,6 @@ export default function QuizPage() {
 							</CardContent>
 						</Card>
 					)}
-
-					<div className="flex justify-center pt-4 md:pt-6">
-						<ButtonSecondary className="px-8 py-3 border-2 rounded-full border-primary text-button-text text-primary hover:bg-primary-fixed/40">
-							Load More Quests
-						</ButtonSecondary>
-					</div>
 				</div>
 
 				<div className="px-4 md:px-margin-desktop">

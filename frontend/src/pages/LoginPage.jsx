@@ -220,6 +220,16 @@ export default function LoginPage() {
                                 error={errors.password}
                             />
 
+                            <div className="flex justify-end px-1">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/forgot-password')}
+                                    className="text-xs font-bold text-indigo-700 underline transition-colors hover:text-indigo-600"
+                                >
+                                    Forgot Password?
+                                </button>
+                            </div>
+
                             <div className="px-2 py-2 space-y-1 font-semibold border rounded-sm border-outline-variant bg-surface-container-low text-on-surface-variant text-[8px]">
                                 <p className={passwordChecks.length ? 'text-tertiary text-xs font-semibold' : 'text-error text-xs font-semibold'}>
                                     {passwordChecks.length ? '✓' : '•'} More than 5 characters
