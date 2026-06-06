@@ -1,9 +1,10 @@
-const User = require("../../../models/users.model");
-const UserLevel = require("../../../models/userLevel.model");
-const UserBadge = require("../../../models/userBadge.model");
-const Badge = require("../../../models/badge.model");
+const { User, UserLevel, UserBadge, Badge, Grade, QuizAttempt, UserPaperProgress, Quiz, Paper } = require("../../../models/associations");
 const sequelize = require("../../../config/db.config");
 
+/**
+ * Retrieves user profile details along with user level, grade, global rank,
+ * badge gallery (earned and locked badges), recent activity list, and counts.
+ */
 const getUserProfileWithRank = async (req, res, next) => {
 	try {
 		const userId = req.userId;
@@ -15,7 +16,7 @@ const getUserProfileWithRank = async (req, res, next) => {
 			});
 		}
 
-		// Get user data with level info
+		// Get user data with level info and grade info
 		const user = await User.findOne({
 			where: { id: userId },
 			include: [
@@ -23,6 +24,11 @@ const getUserProfileWithRank = async (req, res, next) => {
 					model: UserLevel,
 					as: "currentLevel",
 					attributes: ["id", "level_no", "level_name", "xp_required"],
+				},
+				{
+					model: Grade,
+					as: "grade",
+					attributes: ["id", "grade_name"],
 				},
 			],
 		});
@@ -58,28 +64,93 @@ const getUserProfileWithRank = async (req, res, next) => {
 		const xpInCurrentLevel = user.current_xp - currentLevelXpRequired;
 		const xpNeededForNextLevel = nextLevelXpRequired - currentLevelXpRequired;
 
-		// Fetch user's badges (most recent first)
+		// Fetch all badges in system and user's earned badges to build dynamic Badge Gallery
+		const allBadges = await Badge.findAll({
+			attributes: ["id", "name", "description", "icon_url", "badge_type"]
+		});
+
 		const userBadges = await UserBadge.findAll({
+			where: { user_id: userId },
+			attributes: ["badge_id", "earned_at"]
+		});
+
+		const earnedBadgeIds = new Set(userBadges.map((ub) => ub.badge_id));
+
+		const badgeGallery = allBadges.map((badge) => {
+			const earned = earnedBadgeIds.has(badge.id);
+			const userBadgeInfo = userBadges.find((ub) => ub.badge_id === badge.id);
+			return {
+				id: badge.id,
+				name: badge.name,
+				description: badge.description,
+				icon_url: badge.icon_url,
+				badge_type: badge.badge_type,
+				earned,
+				earned_at: userBadgeInfo ? userBadgeInfo.earned_at : null
+			};
+		});
+
+		// Count completed quizzes
+		const completedQuizzesCount = await QuizAttempt.count({
+			where: { user_id: userId, is_completed: true }
+		});
+
+		// Count completed past papers
+		const completedPapersCount = await UserPaperProgress.count({
+			where: { user_id: userId, is_completed: true }
+		});
+
+		// Fetch recent activity: quiz attempts and completed papers
+		const recentQuizzes = await QuizAttempt.findAll({
 			where: { user_id: userId },
 			include: [
 				{
-					model: Badge,
-					as: "badge",
-					attributes: ["id", "name", "description", "icon_url", "badge_type"],
+					model: Quiz,
+					as: "quiz",
+					attributes: ["quiz_name"],
 				},
 			],
-			order: [["earned_at", "DESC"]],
-			limit: 3,
+			order: [["completed_at", "DESC"]],
+			limit: 5,
 		});
 
-		const badges = userBadges.map((ub) => ({
-			id: ub.badge.id,
-			name: ub.badge.name,
-			description: ub.badge.description,
-			icon_url: ub.badge.icon_url,
-			badge_type: ub.badge.badge_type,
-			earned_at: ub.earned_at,
-		}));
+		const recentPapers = await UserPaperProgress.findAll({
+			where: { user_id: userId, is_completed: true },
+			include: [
+				{
+					model: Paper,
+					as: "paper",
+					attributes: ["title"],
+				},
+			],
+			order: [["completed_at", "DESC"]],
+			limit: 5,
+		});
+
+		const activities = [];
+		recentQuizzes.forEach((q) => {
+			activities.push({
+				title: q.quiz?.quiz_name || "Quiz Challenge",
+				completed_at: q.completed_at || q.started_at,
+				type: "quiz",
+				reward: q.xp_gained ? `+${q.xp_gained} XP` : "Completed",
+				score: q.score !== null ? `Score: ${Math.round(q.score)}%` : "",
+			});
+		});
+
+		recentPapers.forEach((p) => {
+			activities.push({
+				title: p.paper?.title || "Past Paper Completion",
+				completed_at: p.completed_at || p.downloaded_at,
+				type: "paper",
+				reward: "Completed",
+				score: "",
+			});
+		});
+
+		// Sort merged activities by completed_at desc
+		activities.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+		const recentActivity = activities.slice(0, 5);
 
 		return res.status(200).json({
 			status: "success",
@@ -89,10 +160,16 @@ const getUserProfileWithRank = async (req, res, next) => {
 				fullname: user.fullname,
 				username: user.username,
 				email: user.email,
+				school_name: user.school_name,
 				profile_url: user.profile_url,
 				grade_id: user.grade_id,
 				current_xp: user.current_xp,
 				current_level_id: user.current_level_id,
+				joined_at: user.joined_at,
+				grade: user.grade ? {
+					id: user.grade.id,
+					grade_name: user.grade.grade_name
+				} : null,
 				level: {
 					id: user.currentLevel?.id,
 					level_no: user.currentLevel?.level_no,
@@ -105,7 +182,12 @@ const getUserProfileWithRank = async (req, res, next) => {
 					needed: xpNeededForNextLevel,
 					percentage: Math.round((xpInCurrentLevel / xpNeededForNextLevel) * 100),
 				},
-				recentBadges: badges,
+				badgeGallery,
+				earnedBadgesCount: userBadges.length,
+				totalBadgesCount: allBadges.length,
+				completedQuizzesCount,
+				completedPapersCount,
+				recentActivity,
 			},
 		});
 	} catch (error) {
@@ -113,4 +195,119 @@ const getUserProfileWithRank = async (req, res, next) => {
 	}
 };
 
-module.exports = getUserProfileWithRank;
+/**
+ * Updates user profile details: fullname, grade_id, school_name, and profile_url (avatar).
+ */
+const updateProfile = async (req, res, next) => {
+	try {
+		const userId = req.userId;
+		const { fullname, grade_id, school_name, profile_url } = req.body;
+
+		if (!userId) {
+			return res.status(401).json({
+				status: "fail",
+				message: "Unauthorized: User ID not found",
+			});
+		}
+
+		// Validation
+		const errors = {};
+		if (!fullname || !fullname.trim()) {
+			errors.fullname = "Full name is required.";
+		}
+		if (!grade_id) {
+			errors.grade_id = "Grade is required.";
+		}
+		if (!school_name || !school_name.trim()) {
+			errors.school_name = "School name is required.";
+		}
+		if (!profile_url || !profile_url.trim()) {
+			errors.profile_url = "Profile image/avatar URL is required.";
+		}
+
+		if (Object.keys(errors).length > 0) {
+			return res.status(400).json({
+				status: "fail",
+				message: "Validation failed",
+				fieldErrors: errors,
+			});
+		}
+
+		// Find user
+		const user = await User.findByPk(userId);
+		if (!user) {
+			return res.status(404).json({
+				status: "fail",
+				message: "User not found",
+			});
+		}
+
+		// Verify selected grade exists
+		const gradeInstance = await Grade.findByPk(grade_id);
+		if (!gradeInstance) {
+			return res.status(400).json({
+				status: "fail",
+				message: "Validation failed",
+				fieldErrors: { grade_id: "Selected grade is invalid." },
+			});
+		}
+
+		// Update details
+		user.fullname = fullname.trim();
+		user.grade_id = Number(grade_id);
+		user.school_name = school_name.trim();
+		user.profile_url = profile_url.trim();
+
+		await user.save();
+
+		// Reload user with new associations for the response
+		const updatedUser = await User.findOne({
+			where: { id: userId },
+			include: [
+				{
+					model: UserLevel,
+					as: "currentLevel",
+					attributes: ["id", "level_no", "level_name", "xp_required"],
+				},
+				{
+					model: Grade,
+					as: "grade",
+					attributes: ["id", "grade_name"],
+				},
+			],
+		});
+
+		return res.status(200).json({
+			status: "success",
+			message: "Profile updated successfully",
+			data: {
+				id: updatedUser.id,
+				fullname: updatedUser.fullname,
+				username: updatedUser.username,
+				email: updatedUser.email,
+				school_name: updatedUser.school_name,
+				profile_url: updatedUser.profile_url,
+				grade_id: updatedUser.grade_id,
+				current_xp: updatedUser.current_xp,
+				current_level_id: updatedUser.current_level_id,
+				joined_at: updatedUser.joined_at,
+				grade: updatedUser.grade ? {
+					id: updatedUser.grade.id,
+					grade_name: updatedUser.grade.grade_name
+				} : null,
+				level: {
+					id: updatedUser.currentLevel?.id,
+					level_no: updatedUser.currentLevel?.level_no,
+					level_name: updatedUser.currentLevel?.level_name,
+				}
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+module.exports = {
+	getUserProfileWithRank,
+	updateProfile,
+};

@@ -4,6 +4,7 @@ import { ArrowRight, ChevronLeft, Mail, LockKeyhole } from 'lucide-react';
 import logoicon from '../assets/icons/logo.png';
 import Footer from '../ui/Footer';
 import { Toast, useToast } from '../ui/Toast';
+import { requestPasswordReset } from '../services/authService';
 
 export default function ForgetPassWord() {
     const navigate = useNavigate();
@@ -29,12 +30,19 @@ export default function ForgetPassWord() {
         setIsSubmitting(true);
 
         try {
-            // Mock API submission
-            await new Promise((resolve) => setTimeout(resolve, 1200));
+            await requestPasswordReset(email);
             toast.success(`Recovery code sent successfully to ${email}! Check your inbox.`);
-            setEmail('');
+            setTimeout(() => {
+                navigate('/reset-password', { state: { email: email.trim().toLowerCase() } });
+            }, 1500);
         } catch (err) {
-            toast.error('Failed to send recovery code. Please try again.');
+            const errMsg = err.message || 'Failed to send recovery code. Please try again.';
+            toast.error(errMsg);
+            if (err.fieldErrors?.email) {
+                setError(err.fieldErrors.email);
+            } else {
+                setError(errMsg);
+            }
         } finally {
             setIsSubmitting(false);
         }
