@@ -122,4 +122,79 @@ async function getUserProfile() {
   return profileCachePromise;
 }
 
-export { registerUser, loginUser, saveAuthSession, clearAuthSession, getAuthSession, getUserProfile, clearProfileCache };
+async function requestPasswordReset(email) {
+  const response = await fetch(`${API_BASE_URL}/users/forget-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+async function resetPassword(data) {
+  const response = await fetch(`${API_BASE_URL}/users/reset-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+async function updateUserProfile(data) {
+  const session = getAuthSession();
+  
+  if (!session?.tokens?.accessToken) {
+    throw new Error("No valid session found");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/users/profile`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.tokens.accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+function updateAuthUser(updatedUser) {
+  const session = getAuthSession();
+  if (session) {
+    session.user = { ...session.user, ...updatedUser };
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  }
+}
+
+export {
+  registerUser,
+  loginUser,
+  saveAuthSession,
+  clearAuthSession,
+  getAuthSession,
+  getUserProfile,
+  clearProfileCache,
+  requestPasswordReset,
+  resetPassword,
+  updateUserProfile,
+  updateAuthUser,
+};

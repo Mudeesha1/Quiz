@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearAuthSession, getUserProfile } from '../services/authService';
+import { clearAuthSession, getUserProfile, requestPasswordReset, updateUserProfile, updateAuthUser } from '../services/authService';
+import { Toast, useToast } from '../ui/Toast';
 import {
 	Award,
 	BookOpen,
@@ -82,11 +83,84 @@ const RECENT_ACTIVITY = [
 	},
 ];
 
-const ACCOUNT_DETAILS = [
-	{ label: 'Grade', value: 'Year 5 - Advanced' },
-	{ label: 'Member Since', value: 'March 2024' },
-	{ label: 'School', value: 'North Star Academy' },
-];
+const getBadgeStyles = (badge) => {
+	if (!badge.earned) {
+		return {
+			icon: Lock,
+			bg: 'bg-surface-container',
+			border: 'border-outline-variant',
+			text: 'text-on-surface-variant',
+			locked: true,
+		};
+	}
+
+	switch (badge.badge_type) {
+		case 'achievement':
+			return {
+				icon: Award,
+				bg: 'bg-amber-100',
+				border: 'border-amber-400',
+				text: 'text-amber-600',
+			};
+		case 'milestone':
+			return {
+				icon: BookOpen,
+				bg: 'bg-blue-100',
+				border: 'border-blue-400',
+				text: 'text-blue-600',
+			};
+		case 'streak':
+			return {
+				icon: Flame,
+				bg: 'bg-orange-100',
+				border: 'border-orange-400',
+				text: 'text-orange-600',
+			};
+		case 'special':
+			return {
+				icon: Trophy,
+				bg: 'bg-emerald-100',
+				border: 'border-emerald-400',
+				text: 'text-emerald-600',
+			};
+		default:
+			return {
+				icon: ShieldCheck,
+				bg: 'bg-purple-100',
+				border: 'border-purple-400',
+				text: 'text-purple-600',
+			};
+	}
+};
+
+const getBadgeItem = (badge) => {
+	const mappedStyles = getBadgeStyles(badge);
+	return {
+		title: badge.name,
+		icon: mappedStyles.icon,
+		bg: mappedStyles.bg,
+		border: mappedStyles.border,
+		text: mappedStyles.text,
+		locked: mappedStyles.locked || false,
+	};
+};
+
+const formatRelativeTime = (dateString) => {
+	if (!dateString) return 'Completed';
+	const now = new Date();
+	const past = new Date(dateString);
+	const diffMs = now - past;
+	const diffMins = Math.floor(diffMs / 60000);
+	const diffHours = Math.floor(diffMins / 60);
+	const diffDays = Math.floor(diffHours / 24);
+
+	if (diffMins < 1) return 'Just now';
+	if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+	if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+	if (diffDays === 1) return 'Yesterday';
+	if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+	return past.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
 
 function Glyph({ icon: Icon, className = '', size = 20, strokeWidth = 2.25 }) {
 	return <Icon size={size} strokeWidth={strokeWidth} className={className} />;
@@ -119,6 +193,7 @@ function ProfileBadge({ item }) {
 
 export default function StudentProfile() {
 	const navigate = useNavigate();
+	const toast = useToast();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 
 	const handleLogout = () => {
@@ -133,6 +208,13 @@ export default function StudentProfile() {
 	const [avatarSeed, setAvatarSeed] = useState('Alex Johnson');
 	const [avatarStyle, setAvatarStyle] = useState('lorelei-neutral');
 	const [userData, setUserData] = useState(null);
+	
+	// Dialog lists and states
+	const [grades, setGrades] = useState([]);
+	const [gradeId, setGradeId] = useState(1);
+	const [schoolName, setSchoolName] = useState('');
+	const [isSaving, setIsSaving] = useState(false);
+	const [isResettingPass, setIsResettingPass] = useState(false);
 
 	// Use DiceBear 9.x API endpoint (style is selectable)
 	const getAvatarUrl = (seed) => `https://api.dicebear.com/9.x/${avatarStyle}/svg?seed=${encodeURIComponent(seed)}&background=%23ffffff`;
@@ -150,21 +232,122 @@ export default function StudentProfile() {
 
 	const randomSeed = () => Math.random().toString(36).slice(2, 9);
 
-	useEffect(() => {
-		const fetchUserData = async () => {
-			try {
-				const res = await getUserProfile();
-				if (res.status === 'success') {
-					setUserData(res.data);
-					setFullName(res.data.fullname);
+	const parseAvatarUrl = (url) => {
+		try {
+			const parsed = new URL(url);
+			const parts = parsed.pathname.split('/');
+			const style = parts[2] || 'lorelei-neutral';
+			const seed = parsed.searchParams.get('seed') || 'U';
+			return { style, seed };
+		} catch (e) {
+			return { style: 'lorelei-neutral', seed: 'U' };
+		}
+	};
+
+	const fetchUserData = async () => {
+		try {
+			const res = await getUserProfile();
+			if (res.status === 'success') {
+				setUserData(res.data);
+				setFullName(res.data.fullname);
+				setGradeId(res.data.grade_id);
+				setSchoolName(res.data.school_name || '');
+				
+				if (res.data.profile_url && res.data.profile_url.includes('api.dicebear.com')) {
+					const { style, seed } = parseAvatarUrl(res.data.profile_url);
+					setAvatarStyle(style);
+					setAvatarSeed(seed);
+				} else {
 					setAvatarSeed(res.data.fullname);
 				}
+			}
+		} catch (err) {
+			console.error('Error fetching user profile for profile page:', err);
+		}
+	};
+
+	useEffect(() => {
+		fetchUserData();
+		
+		// Load grades
+		const loadGrades = async () => {
+			try {
+				const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+				const res = await fetch(`${base}/app/grades`);
+				if (res.ok) {
+					const json = await res.json();
+					if (json?.status === 'success') {
+						setGrades(json.data || []);
+					}
+				}
 			} catch (err) {
-				console.error('Error fetching user profile for profile page:', err);
+				console.error('Failed to load grades', err);
 			}
 		};
-		fetchUserData();
+		loadGrades();
 	}, []);
+
+	const handleEditProfileOpen = () => {
+		if (userData) {
+			setFullName(userData.fullname);
+			setGradeId(userData.grade_id);
+			setSchoolName(userData.school_name || '');
+			if (userData.profile_url && userData.profile_url.includes('api.dicebear.com')) {
+				const { style, seed } = parseAvatarUrl(userData.profile_url);
+				setAvatarStyle(style);
+				setAvatarSeed(seed);
+			} else {
+				setAvatarStyle('lorelei-neutral');
+				setAvatarSeed(userData.fullname);
+			}
+		}
+		setProfileModalOpen(true);
+	};
+
+	const handleSaveChanges = async () => {
+		setIsSaving(true);
+		try {
+			const profileUrl = getAvatarUrl(avatarSeed);
+			const res = await updateUserProfile({
+				fullname: fullName,
+				grade_id: gradeId,
+				school_name: schoolName,
+				profile_url: profileUrl,
+			});
+			if (res.status === 'success') {
+				toast.success('Profile updated successfully!');
+				updateAuthUser({
+					fullname: fullName,
+					profile_url: profileUrl,
+				});
+				await fetchUserData();
+				setProfileModalOpen(false);
+			}
+		} catch (err) {
+			toast.error(err.message || 'Failed to update profile. Please try again.');
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
+	const handleChangePassword = async () => {
+		if (!userData?.email) {
+			toast.error('Email address is missing.');
+			return;
+		}
+		setIsResettingPass(true);
+		try {
+			await requestPasswordReset(userData.email);
+			toast.success(`Verification code sent successfully! Check your inbox.`);
+			setTimeout(() => {
+				navigate('/reset-password', { state: { email: userData.email } });
+			}, 1500);
+		} catch (err) {
+			toast.error(err.message || 'Failed to request password reset.');
+		} finally {
+			setIsResettingPass(false);
+		}
+	};
 
 	useEffect(() => {
 		document.title = 'Profile | Quiz Master';
@@ -183,7 +366,7 @@ export default function StudentProfile() {
 			<StudentSidebar items={NAV_ITEMS} open={sidebarOpen} onClose={() => setSidebarOpen(false)} rankLabel="#42" />
 
 			<main className="min-h-screen pb-12 ml-0 md:ml-64">
-				<StudentHeader onMenuClick={() => setSidebarOpen((value) => !value)} avatarSrc={getAvatarUrl(avatarSeed)} onLogout={handleLogout} />
+				<StudentHeader onMenuClick={() => setSidebarOpen((value) => !value)} avatarSrc={userData ? getProfileImageUrl(userData.profile_url, userData.fullname) : getAvatarUrl(avatarSeed)} onLogout={handleLogout} />
 
 				<div className="px-4 py-6 mx-auto space-y-6 max-w-container-max md:px-margin-desktop md:py-8">
 					<section className="grid grid-cols-12 gap-4 md:gap-gutter">
@@ -216,12 +399,12 @@ export default function StudentProfile() {
 
 									<div className="pt-8 mt-8 border-t border-outline-variant">
 										<div className="flex flex-col gap-3">
-											<ButtonPrimary onClick={() => setProfileModalOpen(true)} className="chunky-button flex w-full items-center justify-center gap-2 rounded-full bg-secondary-container py-3 text-button-text text-white shadow-[0px_4px_0px_0px_#b27300] hover:translate-y-0.5 hover:shadow-[0px_6px_0px_0px_#b45309]">
+											<ButtonPrimary onClick={handleEditProfileOpen} className="chunky-button flex w-full items-center justify-center gap-2 rounded-full bg-secondary-container py-3 text-button-text text-white shadow-[0px_4px_0px_0px_#b27300] hover:translate-y-0.5 hover:shadow-[0px_6px_0px_0px_#b45309]">
 												<Edit3 size={18} strokeWidth={2.25} />
 												Edit Profile
 											</ButtonPrimary>
-											<ButtonSecondary className="w-full py-3 border-2 rounded-full border-primary text-button-text text-primary hover:bg-primary/5">
-												Change Password
+											<ButtonSecondary onClick={handleChangePassword} disabled={isResettingPass} className="w-full py-3 border-2 rounded-full border-primary text-button-text text-primary hover:bg-primary/5 disabled:opacity-50">
+												{isResettingPass ? 'Sending...' : 'Change Password'}
 											</ButtonSecondary>
 										</div>
 									</div>
@@ -233,12 +416,24 @@ export default function StudentProfile() {
 									<h3 className="text-headline-md font-headline-md">Account Details</h3>
 								</CardHeader>
 								<CardContent className="p-6 space-y-4">
-									{ACCOUNT_DETAILS.map((detail) => (
-										<div key={detail.label} className="flex items-center justify-between gap-4">
-											<span className="text-label-lg font-label-lg text-on-surface-variant">{detail.label}</span>
-											<span className="text-sm font-bold text-on-surface md:text-base">{detail.value}</span>
-										</div>
-									))}
+									<div className="flex items-center justify-between gap-4">
+										<span className="text-label-lg font-label-lg text-on-surface-variant">Grade</span>
+										<span className="text-sm font-bold text-on-surface md:text-base">
+											{userData?.grade?.grade_name || 'Grade 5'}
+										</span>
+									</div>
+									<div className="flex items-center justify-between gap-4">
+										<span className="text-label-lg font-label-lg text-on-surface-variant">Member Since</span>
+										<span className="text-sm font-bold text-on-surface md:text-base">
+											{userData?.joined_at ? new Date(userData.joined_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'March 2024'}
+										</span>
+									</div>
+									<div className="flex items-center justify-between gap-4">
+										<span className="text-label-lg font-label-lg text-on-surface-variant">School</span>
+										<span className="text-sm font-bold text-on-surface md:text-base">
+											{userData?.school_name || 'North Star Academy'}
+										</span>
+									</div>
 								</CardContent>
 							</Card>
 						</div>
@@ -246,10 +441,10 @@ export default function StudentProfile() {
 						<div className="col-span-12 space-y-6 lg:col-span-8">
 							<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
 								{[
-									{ label: 'Quizzes', value: '42', icon: BookOpen, tone: 'text-lime-500' },
-									{ label: 'Total XP', value: userData ? userData.current_xp : '12.5k', icon: Flame, tone: 'text-tertiary' },
-									{ label: 'Past Papers', value: '840', icon: FileText, tone: 'text-rose-500' },
-									{ label: 'Global Rank', value: userData ? `#${userData.rank || '00'}` : '12', icon: Trophy, tone: 'text-primary' },
+									{ label: 'Quizzes', value: userData ? userData.completedQuizzesCount : '0', icon: BookOpen, tone: 'text-lime-500' },
+									{ label: 'Total XP', value: userData ? userData.current_xp : '0', icon: Flame, tone: 'text-tertiary' },
+									{ label: 'Past Papers', value: userData ? userData.completedPapersCount : '0', icon: FileText, tone: 'text-rose-500' },
+									{ label: 'Global Rank', value: userData ? `#${userData.rank || '1'}` : '1', icon: Trophy, tone: 'text-primary' },
 								].map((stat) => (
 									<Card key={stat.label} className="text-center border rounded-[1.75rem] shadow-[0px_4px_0px_0px_rgba(0,0,0,0.05)] border-outline-variant bg-surface-container-lowest">
 										<CardContent className="p-4 md:p-6">
@@ -267,14 +462,18 @@ export default function StudentProfile() {
 										<h2 className="text-headline-lg font-headline-lg">Badge Gallery</h2>
 									</div>
 									<UIBadge variant="primary" className="px-4 py-1 w-fit bg-primary-fixed text-primary">
-										12 / 24 Collected
+										{userData ? `${userData.earnedBadgesCount} / ${userData.totalBadgesCount} Collected` : '0 / 0 Collected'}
 									</UIBadge>
 								</CardHeader>
 								<CardContent className="p-5 md:p-6">
 									<div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
-										{BADGES.map((badge) => (
-											<ProfileBadge key={badge.title} item={badge} />
-										))}
+										{userData?.badgeGallery && userData.badgeGallery.length > 0 ? (
+											userData.badgeGallery.map((badge) => (
+												<ProfileBadge key={badge.id} item={getBadgeItem(badge)} />
+											))
+										) : (
+											<p className="col-span-full text-center text-sm font-semibold text-on-surface-variant py-4">No badges collected yet.</p>
+										)}
 									</div>
 								</CardContent>
 							</Card>
@@ -287,23 +486,29 @@ export default function StudentProfile() {
 									</h3>
 								</CardHeader>
 								<CardContent className="p-6 space-y-3">
-									{RECENT_ACTIVITY.map((activity) => (
-										<div key={activity.title} className="flex items-center justify-between gap-4 rounded-full border border-outline-variant bg-white px-4 py-3 shadow-[0px_2px_0px_0px_rgba(0,0,0,0.03)]">
-											<div className="flex items-center gap-3">
-												<div className={`flex h-10 w-10 items-center justify-center rounded-full ${activity.iconBg}`}>
-													<Glyph icon={activity.icon} size={18} className={activity.iconColor} />
+									{userData?.recentActivity && userData.recentActivity.length > 0 ? (
+										userData.recentActivity.map((activity) => (
+											<div key={activity.title} className="flex items-center justify-between gap-4 rounded-full border border-outline-variant bg-white px-4 py-3 shadow-[0px_2px_0px_0px_rgba(0,0,0,0.03)]">
+												<div className="flex items-center gap-3">
+													<div className={`flex h-10 w-10 items-center justify-center rounded-full ${activity.type === 'quiz' ? 'bg-secondary-container/10' : 'bg-primary/10'}`}>
+														<Glyph icon={activity.type === 'quiz' ? BookOpen : FileText} size={18} className={activity.type === 'quiz' ? 'text-secondary-container' : 'text-primary'} />
+													</div>
+													<div>
+														<p className="font-bold text-on-surface">{activity.title}</p>
+														<p className="text-xs text-on-surface-variant">
+															{activity.completed_at ? formatRelativeTime(activity.completed_at) : 'Completed'}
+														</p>
+													</div>
 												</div>
-												<div>
-													<p className="font-bold text-on-surface">{activity.title}</p>
-													<p className="text-xs text-on-surface-variant">{activity.subtitle}</p>
+												<div className="text-right">
+													<p className="font-bold text-tertiary">{activity.reward}</p>
+													<p className="text-xs font-label-lg text-on-surface-variant">{activity.score}</p>
 												</div>
 											</div>
-											<div className="text-right">
-												<p className="font-bold text-tertiary">{activity.reward}</p>
-												<p className="text-xs font-label-lg text-on-surface-variant">{activity.score}</p>
-											</div>
-										</div>
-									))}
+										))
+									) : (
+										<p className="text-center text-sm font-semibold text-on-surface-variant py-4">No recent quest history found.</p>
+									)}
 								</CardContent>
 							</Card>
 						</div>
@@ -392,10 +597,16 @@ export default function StudentProfile() {
 								<div>
 									<label className="block mb-2 text-sm font-bold text-on-surface-variant">Grade</label>
 									<div className="relative">
-										<select defaultValue="Year 5 - Advanced" className="w-full appearance-none rounded-full border border-outline-variant bg-white px-4 py-2.5 pr-10 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15">
-											<option>Year 5 - Advanced</option>
-											<option>Year 4 - Beginner</option>
-											<option>Year 6 - Advanced</option>
+										<select 
+											value={gradeId} 
+											onChange={(e) => setGradeId(Number(e.target.value))}
+											className="w-full appearance-none rounded-full border border-outline-variant bg-white px-4 py-2.5 pr-10 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+										>
+											{grades.map((g) => (
+												<option key={g.id} value={g.id}>
+													{g.grade_name}
+												</option>
+											))}
 										</select>
 										<ChevronDown size={16} className="absolute -translate-y-1/2 pointer-events-none right-4 top-1/2 text-on-surface-variant" strokeWidth={2.25} />
 									</div>
@@ -405,7 +616,8 @@ export default function StudentProfile() {
 									<label className="block mb-2 text-sm font-bold text-on-surface-variant">School Name</label>
 									<input
 										type="text"
-										defaultValue="North Star Academy"
+										value={schoolName}
+										onChange={(e) => setSchoolName(e.target.value)}
 										className="w-full rounded-full border border-outline-variant bg-white px-4 py-2.5 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
 									/>
 								</div>
@@ -415,14 +627,27 @@ export default function StudentProfile() {
 								<ButtonSecondary onClick={() => setProfileModalOpen(false)} className="w-full py-2.5 text-sm font-extrabold transition border-2 rounded-full border-outline-variant text-button-text text-on-surface hover:bg-surface-container-low">
 									Cancel
 								</ButtonSecondary>
-								<ButtonPrimary onClick={() => setProfileModalOpen(false)} className="w-full rounded-full bg-primary py-2.5 text-sm text-button-text font-extrabold text-white shadow-[0px_4px_0px_0px_#2e23a8] transition hover:translate-y-0.5 hover:shadow-[0px_6px_0px_0px_#211a82]">
-									Save Changes
+								<ButtonPrimary disabled={isSaving} onClick={handleSaveChanges} className="w-full rounded-full bg-primary py-2.5 text-sm text-button-text font-extrabold text-white shadow-[0px_4px_0px_0px_#2e23a8] transition hover:translate-y-0.5 hover:shadow-[0px_6px_0px_0px_#211a82] disabled:opacity-50">
+									{isSaving ? 'Saving...' : 'Save Changes'}
 								</ButtonPrimary>
 							</div>
 						</div>
 					</div>
 				</div>
 			)}
+
+			{/* Toasts list */}
+			<div className="fixed z-50 space-y-3 top-4 right-4">
+				{toast.toasts.map((item) => (
+					<Toast
+						key={item.id}
+						type={item.type}
+						message={item.message}
+						duration={item.duration}
+						onClose={() => toast.removeToast(item.id)}
+					/>
+				))}
+			</div>
 		</div>
 	);
 }

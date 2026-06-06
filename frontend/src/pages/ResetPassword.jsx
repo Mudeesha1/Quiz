@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, ChevronLeft, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-react';
 import logoicon from '../assets/icons/logo.png';
 import Footer from '../ui/Footer';
 import { Toast, useToast } from '../ui/Toast';
+import { resetPassword, clearAuthSession } from '../services/authService';
 
 export default function ResetPassword() {
     const navigate = useNavigate();
     const toast = useToast();
+    const location = useLocation();
+    const emailFromState = location.state?.email || '';
     
     // States
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -63,8 +66,11 @@ export default function ResetPassword() {
         if (!password) {
             nextErrors.password = 'New password is required.';
             isValid = false;
-        } else if (password.length < 8) {
-            nextErrors.password = 'Password must be at least 8 characters.';
+        } else if (password.length < 6 || password.length > 11) {
+            nextErrors.password = 'Password must be between 6 and 11 characters.';
+            isValid = false;
+        } else if (!/[A-Z]/.test(password) || !/\d/.test(password)) {
+            nextErrors.password = 'Password must include at least one capital letter and one number.';
             isValid = false;
         }
 
@@ -83,21 +89,41 @@ export default function ResetPassword() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (!emailFromState) {
+            toast.error('Missing email address. Please request a new recovery code.');
+            return;
+        }
+
         if (!validateForm()) {
             return;
         }
 
         setIsSubmitting(true);
         try {
-            // Mock API password reset request
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            const verificationCode = otp.join('');
+            await resetPassword({
+                email: emailFromState,
+                otp: verificationCode,
+                password,
+            });
+            
             toast.success('Your password has been successfully reset!');
-            // Redirect to login page
+            
+            // Clear auth session / log out the user
+            clearAuthSession();
+            
+            // Redirect to login page after toast
             setTimeout(() => {
                 navigate('/login', { replace: true });
-            }, 1000);
+            }, 1500);
         } catch (err) {
-            toast.error('Failed to reset password. Please try again.');
+            const errMsg = err.message || 'Failed to reset password. Please try again.';
+            toast.error(errMsg);
+            setErrors(prev => ({
+                ...prev,
+                otp: err.fieldErrors?.otp || '',
+                password: err.fieldErrors?.password || '',
+            }));
         } finally {
             setIsSubmitting(false);
         }
@@ -132,9 +158,15 @@ export default function ResetPassword() {
                     </div>
 
                     <h2 className="font-headline-lg text-headline-lg text-on-surface mb-3">Reset Your Password</h2>
-                    <p className="font-body-md text-body-md text-on-surface-variant mb-10 max-w-[400px] mx-auto">
-                        Enter the code we sent and choose a new secret password.
-                    </p>
+                    {emailFromState ? (
+                        <p className="font-body-md text-body-md text-on-surface-variant mb-10 max-w-[400px] mx-auto">
+                            Enter the code sent to <span className="font-semibold text-primary">{emailFromState}</span> and choose a new secret password.
+                        </p>
+                    ) : (
+                        <div className="mb-8 p-4 bg-red-50 text-red-700 border border-red-200 rounded-xl max-w-[400px] mx-auto text-sm font-semibold">
+                            ⚠️ Missing email address. Please request a recovery code first.
+                        </div>
+                    )}
 
                     <form className="space-y-8 text-left" onSubmit={handleSubmit}>
                         {/* 6-Digit Code Input Section */}
@@ -174,7 +206,7 @@ export default function ResetPassword() {
                                         className={`w-full pl-12 pr-4 py-4 rounded-lg border-2 bg-surface-container focus:ring-0 transition-all font-body-md text-body-md text-on-surface ${
                                             errors.password ? 'border-error' : 'border-outline-variant focus:border-primary'
                                         }`}
-                                        placeholder="Min. 8 characters"
+                                        placeholder="6-11 characters, 1 uppercase, 1 digit"
                                         type="password"
                                         value={password}
                                         onChange={(e) => {
