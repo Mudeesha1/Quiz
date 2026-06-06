@@ -243,8 +243,8 @@ export default function QuizPage() {
 												<Badge variant={quest.tagVariant === 'success' ? 'success' : 'primary'} className="uppercase tracking-[0.12em]">
 													{quest.subject}
 												</Badge>
-												<div className="flex items-center gap-1 font-bold text-tertiary">
-													<Glyph icon={Flame} size={16} className="text-tertiary" />
+												<div className="flex items-center gap-2 px-3 py-1 border rounded-full border-tertiary-container/20 bg-tertiary-container/10 font-bold text-tertiary text-sm">
+													<Glyph icon={Flame} size={16} className="text-tertiary-container" strokeWidth={2.25} />
 													<span>{quest.reward}</span>
 												</div>
 											</div>

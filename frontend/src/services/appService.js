@@ -204,6 +204,22 @@ export async function submitQuiz(quizId, payload) {
 
   return response.json();
 }
+export async function getLeaderboard(subject) {
+  const session = getAuthSession();
+  const headers = { "Content-Type": "application/json" };
+  if (session?.tokens?.accessToken) {
+    headers["Authorization"] = `Bearer ${session.tokens.accessToken}`;
+  }
 
+  const queryParam = subject ? `?subject=${encodeURIComponent(subject)}` : '';
+  const response = await fetch(`${API_BASE_URL}/app/leaderboard${queryParam}`, {
+    method: "GET",
+    headers,
+  });
 
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
 
+  return response.json();
+}
