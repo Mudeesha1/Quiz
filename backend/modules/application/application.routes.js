@@ -1,5 +1,5 @@
 const express = require("express");
-const { getGrades, getSubjectsByGrade, getTopRankedUsers } = require("./controllers/grade.controller");
+const { getGrades, getSubjectsByGrade, getTopRankedUsers, getLeaderboard } = require("./controllers/grade.controller");
 const { getPapers, downloadPaper, bookmarkPaper, completePaper } = require("./controllers/paper.controller");
 const { getQuizzes, getQuizById, submitQuiz } = require("./controllers/quiz.controller");
 const { requireUser } = require("../../middleware/auth");
@@ -29,5 +29,8 @@ applicationRoutes.post("/papers/:paperId/complete", requireUser, completePaper);
 applicationRoutes.get("/quizzes", requireUser, getQuizzes);
 applicationRoutes.get("/quizzes/:quizId", requireUser, getQuizById);
 applicationRoutes.post("/quizzes/:quizId/submit", requireUser, submitQuiz);
+
+// Leaderboard
+applicationRoutes.get("/leaderboard", requireUser, getLeaderboard);
 
 module.exports = applicationRoutes;
