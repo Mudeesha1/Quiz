@@ -229,17 +229,42 @@ export default function QuizResult({ data: propData } = {}) {
 						</div>
 					</div>
 
-					<div className="qr-rewards">
-						<h3>Rewards Earned</h3>
-						<div className="qr-xp-row">
-							<div style={{display:'flex', alignItems:'center'}}>
-								<div className="qr-xp-icon">
-									<svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M13 2L4.09 12.26c-.24.29-.36.65-.36 1.02C3.73 14.23 4.5 15 5.47 15H11v7l8.91-10.26c.24-.29.36-.65.36-1.02C20.27 9.77 19.5 9 18.53 9H13V2z"/></svg>
+					<div className="flex flex-col gap-4">
+						<div className="qr-rewards">
+							<h3>Rewards Earned</h3>
+							<div className="qr-xp-row">
+								<div style={{display:'flex', alignItems:'center'}}>
+									<div className="qr-xp-icon">
+										<svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M13 2L4.09 12.26c-.24.29-.36.65-.36 1.02C3.73 14.23 4.5 15 5.47 15H11v7l8.91-10.26c.24-.29.36-.65.36-1.02C20.27 9.77 19.5 9 18.53 9H13V2z"/></svg>
+									</div>
+									<span className="qr-xp-label">XP Points</span>
 								</div>
-								<span className="qr-xp-label">XP Points</span>
+								<span className="qr-xp-val">+{data.xp ?? RESULTS.xp}</span>
 							</div>
-							<span className="qr-xp-val">+{data.xp ?? RESULTS.xp}</span>
 						</div>
+						{data.leveledUp && (
+							<div className="qr-badge-card">
+								<div className="qr-badge-top">
+									<div className="qr-badge-icon">
+										<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
+											<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+										</svg>
+									</div>
+									<div>
+										<div className="qr-badge-title">Level Up!</div>
+										<div className="qr-badge-sub">Level {data.newLevelNo || ''}: {data.newLevelName || ''}</div>
+									</div>
+								</div>
+								<p className="qr-badge-desc">
+									Congratulations! You have advanced to a new tier. Keep up the amazing work to unlock more quests and challenges!
+								</p>
+								<div className="qr-badge-wm">
+									<svg width="80" height="80" viewBox="0 0 24 24" fill="#fff">
+										<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+									</svg>
+								</div>
+							</div>
+						)}
 					</div>
 				</div>
 
