@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { clearAuthSession } from '../services/authService';
+import { getQuizById, submitQuiz } from '../services/appService';
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -25,31 +27,9 @@ const NAV_ITEMS = [
 	{ label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
 	{ label: 'Quizzes', icon: BookOpen, to: '/quizzes', active: true },
 	{ label: 'Past Papers', icon: FileText, to: '/past-papers' },
-	{ label: 'Adventure Map', icon: Map, to: '/dashboard' },
 	{ label: 'Leading', icon: Trophy, to: '/leading' },
 	{ label: 'Profile', icon: CircleUser, to: '/profile' },
 ];
-
-const QUESTIONS = [
-	{
-		questionId: '1',
-		grade: 'Grade 5',
-		subject: 'Mathematics',
-		text: 'What is the value of 5 in the number 1,520?',
-		image: 'https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?q=80&w=1200&auto=format&fit=crop',
-		tip: 'Look at place value carefully: ones, tens, hundreds, or thousands.',
-		options: [
-			{ id: 'A', label: '5 Ones' },
-			{ id: 'B', label: '5 Tens' },
-			{ id: 'C', label: '5 Hundreds' },
-			{ id: 'D', label: '5 Thousands' },
-		],
-	},
-];
-
-const QUIZ_PROGRESS = {
-	currentQuestion: 4,
-};
 
 const EXTRA_TIME_MINUTES = 2;
 
@@ -73,18 +53,18 @@ function FallbackImage({ title = 'Quiz Master Visual' }) {
 
 export default function QuizCard() {
 	const navigate = useNavigate();
-	const totalQuestions = QUESTIONS.length;
-	const initialQuestionIndex = Math.max(0, Math.min(QUIZ_PROGRESS.currentQuestion - 1, totalQuestions - 1));
-	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialQuestionIndex);
-	const currentQuestion = currentQuestionIndex + 1;
-	const answeredCount = Math.max(0, currentQuestion - 1);
-	const totalTimeSeconds = totalQuestions * 60 + EXTRA_TIME_MINUTES * 60;
-	const activeQuestion = QUESTIONS[currentQuestionIndex];
-	const isFirstQuestion = currentQuestionIndex === 0;
-	const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
+	const location = useLocation();
+	const quizId = location.state?.quizId;
 
+	// Database states
+	const [quiz, setQuiz] = useState(null);
+	const [questions, setQuestions] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+
+	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const [remainingSeconds, setRemainingSeconds] = useState(totalTimeSeconds);
+	const [remainingSeconds, setRemainingSeconds] = useState(0);
 	const [answersByQuestionId, setAnswersByQuestionId] = useState({});
 	const [questionImageBroken, setQuestionImageBroken] = useState(false);
 	const [missionImageBroken, setMissionImageBroken] = useState(false);
@@ -93,7 +73,18 @@ export default function QuizCard() {
 	const [showResultModal, setShowResultModal] = useState(false);
 	const [resultData, setResultData] = useState(null);
 
-	const selectedOption = answersByQuestionId[activeQuestion.questionId] || '';
+	const handleLogout = () => {
+		clearAuthSession();
+		navigate('/', { replace: true });
+	};
+
+	const totalQuestions = questions.length;
+	const currentQuestion = totalQuestions ? currentQuestionIndex + 1 : 0;
+	const answeredCount = Object.keys(answersByQuestionId).length;
+	const activeQuestion = questions[currentQuestionIndex];
+	const isFirstQuestion = currentQuestionIndex === 0;
+	const isLastQuestion = totalQuestions ? currentQuestionIndex === totalQuestions - 1 : true;
+	const selectedOption = activeQuestion ? (answersByQuestionId[activeQuestion.questionId] || '') : '';
 
 	const goToPreviousQuestion = () => {
 		setCurrentQuestionIndex((value) => Math.max(0, value - 1));
@@ -104,36 +95,45 @@ export default function QuizCard() {
 	};
 
 	const handleSelectOption = (optionId) => {
+		if (!activeQuestion) return;
 		setAnswersByQuestionId((previous) => ({
 			...previous,
 			[activeQuestion.questionId]: optionId,
 		}));
 	};
 
-	const handleSubmitQuiz = (submitType = 'manual') => {
-		if (isSubmitted) {
+	const handleSubmitQuiz = async (submitType = 'manual') => {
+		if (isSubmitted || !quizId || !quiz) {
 			return;
 		}
 
 		setIsSubmitted(true);
 
-		// prepare result data to show inside modal (best-effort values)
-		const answered = Object.values(answersByQuestionId).filter(Boolean).length;
-		const elapsedSeconds = totalTimeSeconds - remainingSeconds;
-		const computed = {
-			correct: answered,
-			total: totalQuestions,
-			time: formatTime(elapsedSeconds),
-			xp: Math.max(50, answered * 10),
-			accuracy: totalQuestions ? Math.round((answered / totalQuestions) * 100) : 0,
-			speed: 'Average',
-			positionsUp: Math.max(0, Math.round((answered / Math.max(1, totalQuestions)) * 15)),
-			quizTitle: 'Quiz Master',
-			submitType,
-		};
+		const timeLimit = quiz.timeLimit || 0;
+		const elapsedSeconds = Math.max(0, timeLimit - remainingSeconds);
 
-		setResultData(computed);
-		setShowResultModal(true);
+		try {
+			const res = await submitQuiz(quizId, {
+				answers: answersByQuestionId,
+				elapsedSeconds,
+			});
+
+			if (res.status === 'success') {
+				setResultData({
+					...res.data,
+					quizTitle: res.data.quizTitle || quiz.quizTitle || 'Quiz Master',
+					submitType,
+				});
+				setShowResultModal(true);
+			} else {
+				alert('Failed to submit quiz.');
+				setIsSubmitted(false);
+			}
+		} catch (err) {
+			console.error('Error submitting quiz:', err);
+			alert(err.message || 'An error occurred during submission.');
+			setIsSubmitted(false);
+		}
 	};
 
 	const handleCancelQuiz = () => {
@@ -149,21 +149,70 @@ export default function QuizCard() {
 		navigate('/quizzes');
 	};
 
+	// Redirect if direct access without state
 	useEffect(() => {
-		setRemainingSeconds(totalTimeSeconds);
-	}, [totalTimeSeconds]);
+		if (!quizId) {
+			navigate('/quizzes', { replace: true });
+		}
+	}, [quizId, navigate]);
 
+	// Fetch quiz details on mount
 	useEffect(() => {
-		// Reset per-question image error state when the question changes
+		if (!quizId) return;
+
+		const fetchQuiz = async () => {
+			try {
+				setLoading(true);
+				setError(null);
+				const res = await getQuizById(quizId);
+				if (res.status === 'success') {
+					setQuiz(res.data);
+					setQuestions(res.data.questions || []);
+					setRemainingSeconds(res.data.timeLimit);
+				} else {
+					setError('Failed to fetch quiz details.');
+				}
+			} catch (err) {
+				console.error('Error fetching quiz:', err);
+				setError('An error occurred while loading the quiz.');
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchQuiz();
+	}, [quizId]);
+
+	// Reset per-question image error state when the question changes
+	useEffect(() => {
 		setQuestionImageBroken(false);
-	}, [activeQuestion.questionId]);
+	}, [currentQuestionIndex]);
 
+	// Timer countdown logic
 	useEffect(() => {
-		if (remainingSeconds === 0 && !isSubmitted) {
+		if (loading || isSubmitted || !quiz) return;
+
+		const timer = window.setInterval(() => {
+			setRemainingSeconds((value) => {
+				if (value <= 1) {
+					window.clearInterval(timer);
+					return 0;
+				}
+				return value - 1;
+			});
+		}, 1000);
+
+		return () => window.clearInterval(timer);
+	}, [loading, isSubmitted, quiz]);
+
+	// Auto-submit when time runs out
+	useEffect(() => {
+		if (remainingSeconds === 0 && !loading && quiz && !isSubmitted) {
 			handleSubmitQuiz('auto');
 		}
-	}, [remainingSeconds, isSubmitted]);
+	}, [remainingSeconds, loading, quiz, isSubmitted]);
 
+	// Load fonts and set document title
 	useEffect(() => {
 		document.title = 'Mission Attempt | Quiz Master';
 
@@ -174,16 +223,38 @@ export default function QuizCard() {
 			link.href = fontHref;
 			document.head.appendChild(link);
 		}
-
-		const timer = window.setInterval(() => {
-			setRemainingSeconds((value) => (value > 0 ? value - 1 : 0));
-		}, 1000);
-
-		return () => window.clearInterval(timer);
 	}, []);
 
-	const progress = useMemo(() => Math.round((currentQuestion / totalQuestions) * 100), [currentQuestion, totalQuestions]);
+	const progress = totalQuestions ? Math.round((currentQuestion / totalQuestions) * 100) : 0;
 	const missionSteps = useMemo(() => Array.from({ length: totalQuestions }, (_, idx) => idx + 1), [totalQuestions]);
+
+	if (!quizId) {
+		return null;
+	}
+
+	if (loading) {
+		return (
+			<div className="min-h-screen flex items-center justify-center bg-surface">
+				<div className="flex flex-col items-center">
+					<div className="w-12 h-12 border-4 rounded-full border-primary border-t-transparent animate-spin"></div>
+					<p className="mt-4 text-on-surface-variant font-semibold">Loading quiz questions...</p>
+				</div>
+			</div>
+		);
+	}
+
+	if (error || !questions.length) {
+		return (
+			<div className="min-h-screen flex items-center justify-center bg-surface">
+				<div className="w-full max-w-md p-6 text-center bg-surface-container-lowest rounded-[1.75rem] border border-outline-variant shadow-sm">
+					<p className="text-error font-semibold mb-4">{error || "No questions found for this quiz."}</p>
+					<ButtonPrimary onClick={() => navigate('/quizzes')} className="rounded-full bg-primary px-6 py-3 text-button-text text-white">
+						Back to Quizzes
+					</ButtonPrimary>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="min-h-screen overflow-x-hidden bg-surface text-on-surface font-body-md">
@@ -193,6 +264,7 @@ export default function QuizCard() {
 				<StudentHeader
 					onMenuClick={() => setSidebarOpen((value) => !value)}
 					avatarSrc="https://api.dicebear.com/9.x/lorelei-neutral/svg?seed=Arjun&backgroundColor=d1d4f9"
+					onLogout={handleLogout}
 				/>
 
 				<div className="px-4 py-3 border-b border-outline-variant bg-surface-container-low md:px-margin-desktop">
@@ -242,12 +314,7 @@ export default function QuizCard() {
 								) : null}
 
 								<h1 className="text-3xl leading-tight font-headline-lg md:text-4xl">
-									{activeQuestion.text.split('5').map((part, idx, arr) => (
-										<span key={`${part}-${idx}`}>
-											{part}
-											{idx < arr.length - 1 ? <span className="underline text-primary decoration-4 underline-offset-4">5</span> : null}
-										</span>
-									))}
+									{activeQuestion.text}
 								</h1>
 
 								<div className="grid gap-4 md:grid-cols-2 md:gap-5">
@@ -265,7 +332,7 @@ export default function QuizCard() {
 												}`}
 											>
 												<span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-black ${selected ? 'bg-white text-primary' : 'bg-surface-container-low text-on-surface-variant'}`}>
-													{option.id}
+													{option.letter}
 												</span>
 												<span className="text-xl font-extrabold">{option.label}</span>
 											</button>
@@ -287,7 +354,7 @@ export default function QuizCard() {
 								<div className="grid grid-cols-5 gap-2.5">
 									{missionSteps.map((step) => {
 										const isCurrent = step === currentQuestion;
-										const stepQuestion = QUESTIONS[step - 1];
+										const stepQuestion = questions[step - 1];
 										const isAnswered = Boolean(stepQuestion && answersByQuestionId[stepQuestion.questionId]);
 
 										return (
@@ -348,7 +415,7 @@ export default function QuizCard() {
 
 				{isLastQuestion ? (
 					<ButtonPrimary
-						onClick={handleSubmitQuiz}
+						onClick={() => handleSubmitQuiz('manual')}
 						className="flex items-center gap-2 rounded-full border-2 border-tertiary/70 bg-tertiary px-8 py-3 text-base font-extrabold text-white shadow-[0px_5px_0px_0px_#00412b] transition-all hover:-translate-y-0.5 hover:shadow-[0px_7px_0px_0px_#003521] active:translate-y-1 active:shadow-none"
 					>
 						Submit
@@ -402,7 +469,7 @@ export default function QuizCard() {
 
 			{showResultModal ? (
 				<div className="fixed inset-0 flex items-center justify-center p-4 z-60 bg-black/50">
-					<div className="w-full p-6 shadow-2xl overflfitow-hidden max-w-fit rounded-3xl bg-surface md:p-8">
+					<div className="w-full p-6 shadow-2xl overflow-hidden max-w-fit rounded-3xl bg-surface md:p-8">
 						<div className="relative">
 							<button
 								className="absolute z-50 p-2 rounded-full right-3 top-3 bg-white/90"

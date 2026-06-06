@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
+import ForgetPassWord from './pages/ForgetPassWord';
+import ResetPassword from './pages/ResetPassword';
 import StudentDashboard from './pages/StudentDashboard';
 import QuizPage from './pages/QuizPage';
 import QuizCard from './pages/QuizCard';
@@ -10,7 +12,6 @@ import QuizResult from './pages/QuizResult';
 import PastPapers from './pages/PastPapers';
 import StudentProfile from './pages/StudentProfile';
 import LeadingPage from './pages/LeadingPage';
-import AdminLogin from './pages/admin/AdminLogin';
 import ComponentLibraryDemo from './ui/ComponentLibraryDemo';
 import AdminDashboard from './pages/admin/AdminDashboard'; 
 
@@ -22,13 +23,14 @@ function PageTitleManager() {
       '/': 'Quiz Master',
       '/registration': 'Registration | Quiz Master',
       '/login': 'Student Login | Quiz Master',
+      '/forgot-password': 'Forgot Password | Quiz Master',
+      '/reset-password': 'Reset Password | Quiz Master',
       '/dashboard': 'Dashboard | Quiz Master',
       '/quizzes': 'Quiz Quest | Quiz Master',
       '/quiz-card': 'Mission Attempt | Quiz Master',
       '/past-papers': 'Past Papers | Quiz Master',
       '/leading': 'Leaderboard | Quiz Master',
       '/profile': 'Profile | Quiz Master',
-      '/admin/login': 'Admin Login | Quiz Master',
       '/demo': 'Component Demo | Quiz Master',
       '/admin/dashboard': 'Admin Dashboard | Quiz Master',
     };
@@ -47,13 +49,56 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/registration" element={<SignupPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<StudentDashboard />} />
-        <Route path="/quizzes" element={<QuizPage />} />
-        <Route path="/quiz-card" element={<QuizCard />} />
-        <Route path="/past-papers" element={<PastPapers />} />
-        <Route path="/leading" element={<LeadingPage />} />
-        <Route path="/profile" element={<StudentProfile />} />
-        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/forgot-password" element={<ForgetPassWord />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <StudentDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quizzes"
+          element={
+            <ProtectedRoute>
+              <QuizPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/quiz-card"
+          element={
+            <ProtectedRoute>
+              <QuizCard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/past-papers"
+          element={
+            <ProtectedRoute>
+              <PastPapers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/leading"
+          element={
+            <ProtectedRoute>
+              <LeadingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <StudentProfile />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/demo" element={<ComponentLibraryDemo />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { clearAuthSession, getUserProfile } from '../services/authService';
 import {
 	Award,
 	BookOpen,
@@ -26,7 +28,6 @@ const NAV_ITEMS = [
 	{ label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
 	{ label: 'Quizzes', icon: BookOpen, to: '/dashboard' },
 	{ label: 'Past Papers', icon: FileText, to: '/past-papers' },
-	{ label: 'Adventure Map', icon: Map, to: '/dashboard' },
 	{ label: 'Leading', icon: Trophy, to: '/leading' },
 	{ label: 'Profile', icon: CircleUser, to: '/profile', active: true },
 ];
@@ -117,7 +118,13 @@ function ProfileBadge({ item }) {
 }
 
 export default function StudentProfile() {
+	const navigate = useNavigate();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+
+	const handleLogout = () => {
+		clearAuthSession();
+		navigate('/', { replace: true });
+	};
 	const [profileModalOpen, setProfileModalOpen] = useState(false);
 
 	// Profile name + DiceBear avatar seed/style
@@ -125,11 +132,39 @@ export default function StudentProfile() {
 	// store raw seed (not pre-encoded) and encode when building the URL
 	const [avatarSeed, setAvatarSeed] = useState('Alex Johnson');
 	const [avatarStyle, setAvatarStyle] = useState('lorelei-neutral');
+	const [userData, setUserData] = useState(null);
 
 	// Use DiceBear 9.x API endpoint (style is selectable)
 	const getAvatarUrl = (seed) => `https://api.dicebear.com/9.x/${avatarStyle}/svg?seed=${encodeURIComponent(seed)}&background=%23ffffff`;
 
+	const getProfileImageUrl = (profileUrl, name) => {
+		const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+		if (profileUrl) {
+			if (profileUrl.startsWith('/')) {
+				return `${API_BASE_URL}${profileUrl}`;
+			}
+			return profileUrl;
+		}
+		return getAvatarUrl(name || 'U');
+	};
+
 	const randomSeed = () => Math.random().toString(36).slice(2, 9);
+
+	useEffect(() => {
+		const fetchUserData = async () => {
+			try {
+				const res = await getUserProfile();
+				if (res.status === 'success') {
+					setUserData(res.data);
+					setFullName(res.data.fullname);
+					setAvatarSeed(res.data.fullname);
+				}
+			} catch (err) {
+				console.error('Error fetching user profile for profile page:', err);
+			}
+		};
+		fetchUserData();
+	}, []);
 
 	useEffect(() => {
 		document.title = 'Profile | Quiz Master';
@@ -148,7 +183,7 @@ export default function StudentProfile() {
 			<StudentSidebar items={NAV_ITEMS} open={sidebarOpen} onClose={() => setSidebarOpen(false)} rankLabel="#42" />
 
 			<main className="min-h-screen pb-12 ml-0 md:ml-64">
-				<StudentHeader onMenuClick={() => setSidebarOpen((value) => !value)} avatarSrc={getAvatarUrl(avatarSeed)} />
+				<StudentHeader onMenuClick={() => setSidebarOpen((value) => !value)} avatarSrc={getAvatarUrl(avatarSeed)} onLogout={handleLogout} />
 
 				<div className="px-4 py-6 mx-auto space-y-6 max-w-container-max md:px-margin-desktop md:py-8">
 					<section className="grid grid-cols-12 gap-4 md:gap-gutter">
@@ -161,20 +196,23 @@ export default function StudentProfile() {
 											<img
 												className="object-cover w-full h-full rounded-full"
 												alt="Student avatar"
-												data-alt="A vibrant, high-quality character illustration of a smiling primary school student wearing a futuristic blue spacesuit, set against a soft bokeh background of a digital classroom. The style is modern 3D cartoonish with soft lighting, emphasizing a playful and encouraging educational atmosphere. High saturation and bright whites define the light-mode aesthetic."
-												src={getAvatarUrl(avatarSeed)}
+												src={userData ? getProfileImageUrl(userData.profile_url, userData.fullname) : getAvatarUrl(avatarSeed)}
 											/>
 										</div>
 										<div className="absolute px-3 py-1 text-sm font-black border-2 border-white rounded-full shadow-sm right-20 -bottom-2 bg-secondary-container text-on-secondary-container ">
-											LVL 14
+											LVL {userData ? userData.level?.level_no || 1 : 14}
 										</div>
 									</div>
 
-									<h2 className="mb-1 text-display-lg font-headline-lg text-headline-lg text-on-surface">Alex Johnson</h2>
-									<p className="mb-6 text-body-md font-body-md text-on-surface-variant">Master Problem Solver</p>
+									<h2 className="mb-1 text-display-lg font-headline-lg text-headline-lg text-on-surface">{fullName}</h2>
+									<p className="mb-6 text-body-md font-body-md text-on-surface-variant">{userData?.level?.level_name || 'Master Problem Solver'}</p>
 
-									<ProgressBar value={2450} max={3000} showLabel={false} className="mb-3" />
-									<p className="text-label-lg font-label-lg text-tertiary">2,450 / 3,000 XP to Level 15</p>
+									<ProgressBar value={userData ? userData.xp_progress?.current || 0 : 2450} max={userData ? userData.xp_progress?.needed || 1000 : 3000} showLabel={false} className="mb-3" />
+									<p className="text-label-lg font-label-lg text-tertiary">
+										{userData 
+											? `${userData.current_xp} / ${userData.xp_progress?.needed || 1000} XP to Level ${(userData.level?.level_no || 1) + 1}`
+											: '2,450 / 3,000 XP to Level 15'}
+									</p>
 
 									<div className="pt-8 mt-8 border-t border-outline-variant">
 										<div className="flex flex-col gap-3">
@@ -207,7 +245,12 @@ export default function StudentProfile() {
 
 						<div className="col-span-12 space-y-6 lg:col-span-8">
 							<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-								{QUICK_STATS.map((stat) => (
+								{[
+									{ label: 'Quizzes', value: '42', icon: BookOpen, tone: 'text-lime-500' },
+									{ label: 'Total XP', value: userData ? userData.current_xp : '12.5k', icon: Flame, tone: 'text-tertiary' },
+									{ label: 'Past Papers', value: '840', icon: FileText, tone: 'text-rose-500' },
+									{ label: 'Global Rank', value: userData ? `#${userData.rank || '00'}` : '12', icon: Trophy, tone: 'text-primary' },
+								].map((stat) => (
 									<Card key={stat.label} className="text-center border rounded-[1.75rem] shadow-[0px_4px_0px_0px_rgba(0,0,0,0.05)] border-outline-variant bg-surface-container-lowest">
 										<CardContent className="p-4 md:p-6">
 											<Glyph icon={stat.icon} size={36} className={`mx-auto mb-3 ${stat.tone}`} />

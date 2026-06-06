@@ -1,12 +1,48 @@
 import { Link } from 'react-router-dom';
-import { Flame, LogOut, Menu, Trophy } from 'lucide-react';
+import { Flame, LogOut, Menu, Trophy, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import logoicon from '../assets/icons/logo.png';
+import { getTopRankedUsers } from '../services/appService';
+import { getUserProfile } from '../services/authService';
 
 function Glyph({ icon: Icon, className = '', size = 20, strokeWidth = 2.25 }) {
   return <Icon size={size} strokeWidth={strokeWidth} className={className} />;
 }
-
 export function StudentSidebar({ items, open, onClose, rankLabel = '#42' }) {
+  const [topUsers, setTopUsers] = useState([]);
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    const fetchTopUsers = async () => {
+      try {
+        const res = await getTopRankedUsers();
+        if (res.status === 'success') {
+          setTopUsers(res.data);
+        }
+      } catch (err) {
+        console.error('Error fetching top ranked users for sidebar:', err);
+      }
+    };
+
+    fetchTopUsers();
+  }, []);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const res = await getUserProfile();
+        if (res.status === 'success') {
+          setUserData(res.data);
+        }
+      } catch (err) {
+        console.error('Error fetching user profile for sidebar:', err);
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  const displayRank = userData ? `#${userData.rank || '00'}` : (rankLabel !== '#42' ? rankLabel : '#--');
+
   return (
     <>
       {open ? <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={onClose} /> : null}
@@ -16,14 +52,14 @@ export function StudentSidebar({ items, open, onClose, rankLabel = '#42' }) {
           open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="mb-10 px-6">
+        <div className="px-6 mb-10">
           <div className="flex items-center gap-3">
-            <img src={logoicon} alt="Quiz Master" className="h-8 w-8 rounded-lg" />
+            <img src={logoicon} alt="Quiz Master" className="w-8 h-8 rounded-lg" />
             <h3 className="font-headline-md text-headline-md font-extrabold tracking-tight text-[#4a39e2]">Quiz Master</h3>
           </div>
         </div>
 
-        <nav className="grow space-y-1">
+        <nav className="space-y-1 grow">
           {items.map((item) => {
             const isActive = Boolean(item.active);
 
@@ -43,23 +79,27 @@ export function StudentSidebar({ items, open, onClose, rankLabel = '#42' }) {
           })}
         </nav>
 
-        <div className="mx-4 mb-4 mt-auto rounded-lg border border-outline-variant bg-surface-container-low p-4">
+        <div className="p-4 mx-4 mt-auto mb-4 border rounded-lg border-outline-variant bg-surface-container-low">
           <h3 className="mb-3 flex items-center gap-2 font-label-lg text-label-lg text-[#4a39e2]">
             <Trophy size={18} strokeWidth={2.25} />
             Global Rank
           </h3>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-[#6b7280]">Your Position</span>
-            <span className="font-bold text-[#d27d00]">{rankLabel}</span>
+            <span className="font-bold text-[#d27d00]">{displayRank}</span>
           </div>
           <div className="mt-2 space-y-2">
             <div className="flex items-center gap-2 text-xs opacity-70">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-secondary-container text-white">1</span>
-              <span>Leo The Brave</span>
+              <span className="flex items-center justify-center w-4 h-4 text-white rounded-full bg-[#FFD700] font-bold">1</span>
+              <span className="truncate max-w-[160px]">{topUsers[0]?.fullname || 'Challenger Slot'}</span>
             </div>
             <div className="flex items-center gap-2 text-xs opacity-70">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-400 text-white">2</span>
-              <span>MathsWhiz2024</span>
+              <span className="flex items-center justify-center w-4 h-4 text-white rounded-full bg-[#C0C0C0] font-bold">2</span>
+              <span className="truncate max-w-[160px]">{topUsers[1]?.fullname || 'Challenger Slot'}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs opacity-70">
+              <span className="flex items-center justify-center w-4 h-4 text-white rounded-full bg-[#CD7F32] font-bold">3</span>
+              <span className="truncate max-w-[160px]">{topUsers[2]?.fullname || 'Challenger Slot'}</span>
             </div>
           </div>
         </div>
@@ -67,23 +107,84 @@ export function StudentSidebar({ items, open, onClose, rankLabel = '#42' }) {
     </>
   );
 }
+export function StudentHeader({ onMenuClick, avatarSrc, logoutLabel = 'Logout', onLogout, currentXp = 0, levelName = 'Explorer' }) {
+  const [imageError, setImageError] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const defaultAvatarUrl = "https://api.dicebear.com/9.x/initials/svg?seed=U&background=%23ffffff";
 
-export function StudentHeader({ onMenuClick, avatarSrc, logoutLabel = 'Logout' }) {
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const res = await getUserProfile();
+        if (res.status === 'success') {
+          setUserData(res.data);
+        }
+      } catch (err) {
+        console.error('Error fetching user profile for header:', err);
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  const getProfileImageUrl = (profileUrl, fullname) => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+    if (profileUrl) {
+      if (profileUrl.startsWith('/')) {
+        return `${API_BASE_URL}${profileUrl}`;
+      }
+      return profileUrl;
+    }
+    const initials = fullname
+      ?.split(' ')
+      .map(name => name[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || 'U';
+    return `https://api.dicebear.com/9.x/initials/svg?seed=${initials}&background=%23ffffff`;
+  };
+
+  const displayXp = userData !== null ? userData.current_xp : currentXp;
+  const displayLevelName = userData?.level?.level_name || levelName;
+  const displayAvatar = userData
+    ? getProfileImageUrl(userData.profile_url, userData.fullname)
+    : avatarSrc || defaultAvatarUrl;
+
+  useEffect(() => {
+    setImageError(false);
+  }, [displayAvatar]);
+  
   return (
-    <header className="sticky top-0 z-40 flex w-full items-center justify-between bg-surface px-4 py-3 shadow-sm md:px-margin-desktop md:py-4">
+    <header className="sticky top-0 z-40 flex items-center justify-between w-full px-4 py-3 shadow-sm bg-surface md:px-margin-desktop md:py-4">
       <div className="flex items-center gap-4">
-        <button onClick={onMenuClick} className="rounded-lg p-2 transition-colors hover:bg-surface-container-low md:hidden" aria-label="Open menu">
+        <button onClick={onMenuClick} className="p-2 transition-colors rounded-lg hover:bg-surface-container-low md:hidden" aria-label="Open menu">
           <Menu size={24} className="text-on-surface" strokeWidth={2.25} />
         </button>
       </div>
       <div className="flex items-center gap-3 md:gap-6">
-        <div className="hidden items-center gap-2 rounded-full border border-tertiary-container/20 bg-tertiary-container/10 px-3 py-1 sm:flex">
+        <div className="items-center hidden gap-2 px-3 py-1 border rounded-full border-tertiary-container/20 bg-tertiary-container/10 sm:flex">
           <Flame size={16} className="text-tertiary-container" strokeWidth={2.25} />
-          <span className="font-bold text-tertiary">450 XP</span>
+          <span className="font-bold text-tertiary">{displayXp} XP</span>
+        </div>
+        <div className="hidden md:block">
+          <p className="text-xs text-on-surface-variant">Level: <span className="font-bold text-on-surface">{displayLevelName}</span></p>
         </div>
         <div className="flex items-center gap-2 px-3 md:gap-3 md:px-6">
-          <img alt="Student Avatar" className="h-8 w-8 rounded-full border-2 border-primary object-cover md:h-10 md:w-10" src={avatarSrc} />
-          <button className="chunky-button-primary flex w-full items-center justify-center gap-2 rounded-full bg-error px-6 py-2.5 text-sm font-bold text-white shadow-[0px_4px_0px_0px_#600e0e] transition-all active:translate-y-1 active:shadow-none sm:w-auto md:px-8 md:py-3 md:text-base">
+          {imageError ? (
+            <div className="flex items-center justify-center w-8 h-8 border-2 rounded-full border-primary md:h-10 md:w-10 bg-primary-container">
+              <User size={16} className="text-on-primary-container md:w-6 md:h-6" strokeWidth={2.25} />
+            </div>
+          ) : (
+            <img 
+              alt="Student Avatar" 
+              className="object-cover w-8 h-8 border-2 rounded-full border-primary md:h-10 md:w-10" 
+              src={displayAvatar}
+              onError={() => setImageError(true)}
+            />
+          )}
+          <button
+            onClick={onLogout}
+            className="chunky-button-primary flex w-full items-center justify-center gap-2 rounded-full bg-error px-6 py-2.5 text-sm font-bold text-white shadow-[0px_4px_0px_0px_#600e0e] transition-all active:translate-y-1 active:shadow-none sm:w-auto md:px-8 md:py-3 md:text-base"
+          >
             {logoutLabel}
             <LogOut size={22} className="text-white" strokeWidth={2.25} />
           </button>
