@@ -13,17 +13,7 @@ import PastPapers from './pages/PastPapers';
 import StudentProfile from './pages/StudentProfile';
 import LeadingPage from './pages/LeadingPage';
 import ComponentLibraryDemo from './ui/ComponentLibraryDemo';
-import { getAuthSession } from './services/authService';
-
-function ProtectedRoute({ children }) {
-  const session = getAuthSession();
-
-  if (!session?.tokens?.accessToken) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
-}
+import AdminDashboard from './pages/admin/AdminDashboard'; 
 
 function PageTitleManager() {
   const location = useLocation();
@@ -42,6 +32,7 @@ function PageTitleManager() {
       '/leading': 'Leaderboard | Quiz Master',
       '/profile': 'Profile | Quiz Master',
       '/demo': 'Component Demo | Quiz Master',
+      '/admin/dashboard': 'Admin Dashboard | Quiz Master',
     };
 
     document.title = titles[location.pathname] ?? 'Quiz Master';
@@ -109,6 +100,7 @@ function App() {
           }
         />
         <Route path="/demo" element={<ComponentLibraryDemo />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>
     </Router>
   )

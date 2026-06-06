@@ -270,15 +270,16 @@ export default function LoginPage() {
                             Safe student login area
                         </div>
 
-                        <div className="mt-8 text-center">
+                         <div className="mt-8 text-center">
                             <button
+                                onClick={() => navigate('/admin/login')}
                                 type="button"
                                 className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-500 transition-colors hover:text-indigo-700"
                             >
                                 <Mail size={15} />
                                 Admin Login
                             </button>
-                        </div>
+                        </div> 
                     </section>
                 </div>
             </main>
