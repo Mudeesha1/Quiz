@@ -11,3 +11,4 @@ export { TextInput, Select } from './Input';
 export { Toast, useToast } from './Toast';
 export { Badge } from './Badge';
 export { StudentHeader, StudentSidebar } from './StudentShell';
+export { AdminHeader, AdminSidebar } from './AdminShell';

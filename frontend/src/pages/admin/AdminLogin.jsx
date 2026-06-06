@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
-import logoicon from '../assets/icons/logo.png';
-import patternsBg from '../assets/images/patterns.png';
-import Footer from '../ui/Footer';
+import { ArrowRight, ChevronLeft, Eye, EyeOff, LockKeyhole, ShieldCheck, UserRound, ShieldUser } 
+from 'lucide-react';
+
+import { ButtonPrimary, ButtonSecondary } from '../../ui/Button';
 
 function LoginField({ label, id, icon: Icon, type = 'text', placeholder, value, onChange }) {
     return (
         <div className="space-y-2">
-            <label htmlFor={id} className="block text-sm font-bold text-on-surface">
+            <label htmlFor={id} className="block text-sm font-bold text-slate-900">
                 {label}
             </label>
             <div className="relative">
-                <span className="absolute inset-y-0 left-0 z-10 flex items-center pl-4 pointer-events-none text-outline">
+                <span className="absolute inset-y-0 left-0 z-10 flex items-center pl-4 text-slate-400">
                     <Icon size={18} strokeWidth={2} />
                 </span>
                 <input
@@ -22,24 +22,24 @@ function LoginField({ label, id, icon: Icon, type = 'text', placeholder, value, 
                     placeholder={placeholder}
                     value={value}
                     onChange={onChange}
-                    className="h-12 w-full rounded-full border border-outline-variant bg-surface-container-low px-4 pl-12 pr-4 text-sm text-on-surface shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-fixed/60"
+                    className="h-12 w-full rounded-full border border-slate-200 bg-slate-50 px-4 pl-12 pr-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
                 />
             </div>
         </div>
     );
 }
 
-function PasswordField({ label, id, placeholder, value, onChange }) {
+function PasswordField({ label, id, icon: Icon, placeholder, value, onChange }) {
     const [showPassword, setShowPassword] = useState(false);
 
     return (
         <div className="space-y-2">
-            <label htmlFor={id} className="block text-sm font-bold text-on-surface">
+            <label htmlFor={id} className="block text-sm font-bold text-slate-900">
                 {label}
             </label>
             <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-outline">
-                    <LockKeyhole size={18} strokeWidth={2} />
+                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
+                    <Icon size={18} strokeWidth={2} />
                 </span>
                 <input
                     id={id}
@@ -48,13 +48,13 @@ function PasswordField({ label, id, placeholder, value, onChange }) {
                     placeholder={placeholder}
                     value={value}
                     onChange={onChange}
-                    className="h-12 w-full rounded-full border border-outline-variant bg-surface-container-low px-4 pl-12 pr-14 text-sm text-on-surface shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-fixed/60"
+                    className="h-12 w-full rounded-full border border-slate-200 bg-slate-50 px-4 pl-12 pr-14 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
                 />
                 <button
                     type="button"
                     onClick={() => setShowPassword((current) => !current)}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    className="absolute inset-y-0 right-0 flex items-center pr-4 transition text-outline hover:text-primary"
+                    className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-500 transition hover:text-indigo-600"
                 >
                     {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
                 </button>
@@ -101,23 +101,23 @@ export default function AdminLogin() {
                 <div className="w-full max-w-4/12 max-sm:max-w-full max-md:max-w-3/4 max-lg:max-w-2/4">
                     <div className="mb-8 text-center">
                         <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-indigo-100 shadow-[0_18px_30px_-16px_rgba(79,70,229,0.85)]">
-                            <img src={logoicon} alt="Quiz Master logo" className="object-contain w-12 h-12" />
+                            <ShieldUser  size={44} className="text-indigo-700" />
                         </div>
                         <h1 className="text-4xl font-black tracking-tight text-indigo-700 sm:text-[2.7rem] sm:leading-tight">
                             Quiz Master
                         </h1>
-                        <p className="mt-2 text-base font-medium text-gray-600">
-                            Ready for your next adventure?
+                        <p className="mt-2 text-base font-medium text-slate-600">
+                            Admin portal for the Quiz Master experience.
                         </p>
                     </div>
 
                     <section className="rounded-[2rem] border border-white/80 bg-white/80 p-6 shadow-[0_12px_40px_-18px_rgba(17,24,39,0.24)] backdrop-blur-md sm:p-8">
                         <form className="space-y-5">
                             <LoginField
-                                label="Username or Email"
+                                label="Admin Email"
                                 id="username"
                                 icon={UserRound}
-                                placeholder="user@gmail.com"
+                                placeholder="admin@quizmaster.com"
                                 value={values.username}
                                 onChange={handleChange}
                             />
@@ -131,47 +131,17 @@ export default function AdminLogin() {
                                 onChange={handleChange}
                             />
 
-                            <button
-                                type="button"
-                                className="flex w-full items-center justify-center rounded-full border-b-4 border-amber-700 bg-amber-400 px-6 py-4 text-base font-black text-gray-900 shadow-[0_12px_24px_rgba(251,191,36,0.22)] transition-all hover:-translate-y-0.5 hover:bg-amber-300 active:translate-y-1 active:border-b-0"
-                            >
-                                Login to Play
-                                <ArrowRight size={18} className="ml-2" />
-                            </button>
+                            <ButtonSecondary type="button" className="w-full justify-center gap-2 py-4 text-base bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-300">
+                              LOGIN AS ADMIN
+                                <ArrowRight size={18} />
+                            </ButtonSecondary>
                         </form>
 
-                        <div className="text-center mt-7">
-                            <p className="text-sm font-medium text-gray-600">
-                                New explorer?{' '}
-                                <button
-                                    type="button"
-                                    onClick={() => navigate('/registration')}
-                                    className="font-extrabold text-indigo-700 underline transition-colors decoration-2 underline-offset-4 hover:text-indigo-600"
-                                >
-                                    Register here
-                                </button>
-                            </p>
-                        </div>
-
-                        <div className="flex items-center justify-center gap-2 text-sm font-semibold text-gray-500 mt-7">
-                            <ShieldCheck size={16} className="text-indigo-500" />
-                            Safe student login area
-                        </div>
-
-                        <div className="mt-8 text-center">
-                            <button
-                                type="button"
-                                className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-gray-500 transition-colors hover:text-indigo-700"
-                            >
-                                <Mail size={15} />
-                                Admin Login
-                            </button>
-                        </div>
                     </section>
                 </div>
             </main>
 
-            <Footer />
+            
         </div>
     );
 }
