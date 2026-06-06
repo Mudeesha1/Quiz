@@ -14,6 +14,17 @@ import StudentProfile from './pages/StudentProfile';
 import LeadingPage from './pages/LeadingPage';
 import ComponentLibraryDemo from './ui/ComponentLibraryDemo';
 import AdminDashboard from './pages/admin/AdminDashboard'; 
+import { getAuthSession } from './services/authService';
+
+function ProtectedRoute({ children }) {
+  const session = getAuthSession();
+
+  if (!session?.tokens?.accessToken) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 
 function PageTitleManager() {
   const location = useLocation();
