@@ -1,5 +1,5 @@
 const express = require("express");
-const { getGrades } = require("./controllers/grade.controller");
+const { getGrades, getSubjectsByGrade, getTopRankedUsers } = require("./controllers/grade.controller");
 
 const applicationRoutes = express.Router();
 
@@ -13,6 +13,8 @@ applicationRoutes.get("/health", (req, res) => {
 });
 
 applicationRoutes.get("/grades", getGrades);
+applicationRoutes.get("/grades/:gradeId/subjects", getSubjectsByGrade);
+applicationRoutes.get("/leaderboard/top-3", getTopRankedUsers);
 // Protect following routes with auth + role check
 
 // protected routes for registered users

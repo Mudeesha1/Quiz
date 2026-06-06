@@ -1,6 +1,8 @@
 const express = require("express");
 const registerUser = require("./controllers/register.controller");
 const loginUser = require("./controllers/login.controller");
+const getUserProfileWithRank = require("./controllers/profile.controller");
+const { requireUser } = require("../../middleware/auth");
 
 const usersRoutes = express.Router();
 
@@ -8,8 +10,7 @@ const usersRoutes = express.Router();
 usersRoutes.post("/register", registerUser);
 usersRoutes.post("/login", loginUser);
 
-// Protect following routes with auth + role check
-
-// protected routes for registered users
+// Protected routes for registered users
+usersRoutes.get("/profile", requireUser, getUserProfileWithRank);
 
 module.exports = usersRoutes;

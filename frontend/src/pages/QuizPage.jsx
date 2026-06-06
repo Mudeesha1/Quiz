@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { clearAuthSession } from '../services/authService';
 import {
 	ArrowRight,
@@ -138,6 +138,7 @@ function Glyph({ icon: Icon, className = '', size = 20, strokeWidth = 2.25 }) {
 
 export default function QuizPage() {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 
 	const handleLogout = () => {
@@ -145,8 +146,8 @@ export default function QuizPage() {
 		navigate('/', { replace: true });
 	};
 	const [searchTerm, setSearchTerm] = useState('');
-	const [selectedGrade, setSelectedGrade] = useState('Grade 4');
-	const [selectedSubject, setSelectedSubject] = useState('All Subjects');
+	const [selectedGrade, setSelectedGrade] = useState(location.state?.grade || 'Grade 4');
+	const [selectedSubject, setSelectedSubject] = useState(location.state?.subject || 'All Subjects');
 	const [activeTab, setActiveTab] = useState('available');
 
 	useEffect(() => {

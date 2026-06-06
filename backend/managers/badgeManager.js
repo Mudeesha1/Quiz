@@ -228,8 +228,8 @@ const createDefaultBadges = async () => {
 
 	// ====== SPECIAL (Ranks / Leaderboard) ======
 	{
-		name: "Subject Expert",
-		description: "Earn a top rank in any specific subject leaderboard (Environment, Sinhala, IQ, English).",
+		name: "Environment Expert",
+		description: "Earn a top rank in Environment subject leaderboard.",
 		icon_url: "/badges/subject-expert.png",
 		badge_type: "special",
 		xp_required: null
@@ -240,7 +240,36 @@ const createDefaultBadges = async () => {
 		icon_url: "/badges/global-rank.png",
 		badge_type: "special",
 		xp_required: null
-	}
+	},
+	// ====== SPECIAL (Ranks / Leaderboard per Subject) ======
+	{
+		name: "Environment Expert",
+		description: "Earn a top rank in the Environment subject leaderboard. (පරිසර ප්‍රවීණයා)",
+		icon_url: "/badges/environment-expert.png",
+		badge_type: "special",
+		xp_required: null
+	},
+	{
+		name: "Math Wizard",
+		description: "Earn a top rank in the Mathematics subject leaderboard. (ගණිත මිනින්දෝරුවා)",
+		icon_url: "/badges/math-wizard.png",
+		badge_type: "special",
+		xp_required: null
+	},
+	{
+		name: "English Master",
+		description: "Earn a top rank in the English subject leaderboard. (ඉංග්‍රීසි ශූරයා)",
+		icon_url: "/badges/english-master.png",
+		badge_type: "special",
+		xp_required: null
+	},
+	{
+		name: "IQ Genius",
+		description: "Earn a top rank in the IQ (Intelligence Quotient) leaderboard. (බුද්ධි පරීක්ෂණ අභියෝගකයා)",
+		icon_url: "/badges/iq-genius.png",
+		badge_type: "special",
+		xp_required: null
+	},
 		];
 
 		const created = await Badge.bulkCreate(defaultBadges, {
