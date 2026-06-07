@@ -188,6 +188,23 @@ export default function StudentDashboard() {
     navigate('/', { replace: true });
   };
 
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      const response = await getUserProfile();
+      if (response.status === 'success') {
+        setUserData(response.data);
+      } else {
+        setError('Failed to load user data');
+      }
+    } catch (err) {
+      setError(err.message || 'Error loading user profile');
+      console.error('Error fetching user profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     document.title = 'Quiz Master | Student Dashboard';
 
@@ -198,24 +215,6 @@ export default function StudentDashboard() {
       link.href = fontHref;
       document.head.appendChild(link);
     }
-
-    // Fetch user profile data
-    const fetchUserData = async () => {
-      try {
-        setLoading(true);
-        const response = await getUserProfile();
-        if (response.status === 'success') {
-          setUserData(response.data);
-        } else {
-          setError('Failed to load user data');
-        }
-      } catch (err) {
-        setError(err.message || 'Error loading user profile');
-        console.error('Error fetching user profile:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
 
     // Fetch grades
     const fetchGrades = async () => {
@@ -238,8 +237,13 @@ export default function StudentDashboard() {
     fetchUserData();
     fetchGrades();
 
+    window.addEventListener('profileUpdated', fetchUserData);
+
     const timer = window.setTimeout(() => setTipVisible(true), 3000);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('profileUpdated', fetchUserData);
+    };
   }, []);
 
   // Fetch subjects when selectedGradeId changes

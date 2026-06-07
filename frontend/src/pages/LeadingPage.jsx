@@ -154,6 +154,11 @@ export default function LeadingPage() {
 			}
 		};
 		fetchUserData();
+
+		window.addEventListener('profileUpdated', fetchUserData);
+		return () => {
+			window.removeEventListener('profileUpdated', fetchUserData);
+		};
 	}, []);
 
 	// Fetch leaderboard ranking from API
@@ -196,7 +201,7 @@ export default function LeadingPage() {
 		return list.filter(item => item.xp > 0).length;
 	}, [list]);
 
-	const isLeaderboardUnlocked = activeTab === 'global' || activeParticipantsCount >= 3;
+	const isLeaderboardUnlocked = activeParticipantsCount >= 3;
 
 	return (
 		<div className="min-h-screen overflow-x-hidden bg-surface text-on-surface font-body-md">
@@ -307,7 +312,13 @@ export default function LeadingPage() {
 								<Trophy size={56} className="mb-4 text-outline-variant" strokeWidth={1.75} />
 								<h3 className="mb-2 text-headline-md font-headline-md text-on-surface-variant">Leaderboard Locked</h3>
 								<p className="max-w-full mb-6 text-sm text-on-surface-variant">
-									At least 3 students must complete quizzes in <strong>{selectedSubject}</strong> to unlock the subject rankings. Currently, only {activeParticipantsCount} student(s) have earned XP in this subject.
+									{activeTab === 'global' ? (
+										`At least 3 students must complete quizzes to unlock the global rankings. Currently, only ${activeParticipantsCount} student(s) have earned XP.`
+									) : (
+										<>
+											At least 3 students must complete quizzes in <strong>{selectedSubject}</strong> to unlock the subject rankings. Currently, only {activeParticipantsCount} student(s) have earned XP in this subject.
+										</>
+									)}
 								</p>
 								<ButtonPrimary
 									onClick={() => navigate('/quizzes')}
