@@ -1,4 +1,5 @@
 const { Paper, SubjectHasYear, Subject, Year, UserPaperProgress, UserPaperBookmark } = require("../../../models/associations");
+const badgeManager = require("../../../managers/badgeManager");
 
 /**
  * Get all papers along with unique subjects and years for filters,
@@ -125,10 +126,14 @@ const downloadPaper = async (req, res, next) => {
 			await progress.save();
 		}
 
+		// Check and award badges
+		const newlyEarnedBadges = await badgeManager.checkAndAwardBadges(userId);
+
 		return res.status(200).json({
 			status: "success",
 			message: "Paper download status updated successfully",
 			data: progress,
+			newlyEarnedBadges: newlyEarnedBadges || [],
 		});
 	} catch (error) {
 		next(error);
@@ -170,6 +175,7 @@ const bookmarkPaper = async (req, res, next) => {
 				status: "success",
 				message: "Bookmark removed successfully",
 				bookmarked: false,
+				newlyEarnedBadges: [],
 			});
 		} else {
 			const newBookmark = await UserPaperBookmark.create({
@@ -178,11 +184,15 @@ const bookmarkPaper = async (req, res, next) => {
 				bookmarked_at: new Date(),
 			});
 
+			// Check and award badges
+			const newlyEarnedBadges = await badgeManager.checkAndAwardBadges(userId);
+
 			return res.status(200).json({
 				status: "success",
 				message: "Bookmark added successfully",
 				bookmarked: true,
 				data: newBookmark,
+				newlyEarnedBadges: newlyEarnedBadges || [],
 			});
 		}
 	} catch (error) {
@@ -229,10 +239,14 @@ const completePaper = async (req, res, next) => {
 			await progress.save();
 		}
 
+		// Check and award badges
+		const newlyEarnedBadges = await badgeManager.checkAndAwardBadges(userId);
+
 		return res.status(200).json({
 			status: "success",
 			message: "Paper marked as completed successfully",
 			data: progress,
+			newlyEarnedBadges: newlyEarnedBadges || [],
 		});
 	} catch (error) {
 		next(error);
