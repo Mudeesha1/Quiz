@@ -1,4 +1,4 @@
-const { User, UserLevel, UserBadge, Badge, Grade, QuizAttempt, UserPaperProgress, Quiz, Paper } = require("../../../models/associations");
+const { User, UserLevel, UserBadge, Badge, Grade, QuizAttempt, UserPaperProgress, Quiz, Paper, UserReview } = require("../../../models/associations");
 const sequelize = require("../../../config/db.config");
 
 /**
@@ -152,6 +152,10 @@ const getUserProfileWithRank = async (req, res, next) => {
 		activities.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
 		const recentActivity = activities.slice(0, 5);
 
+		const review = await UserReview.findOne({
+			where: { user_id: userId }
+		});
+
 		return res.status(200).json({
 			status: "success",
 			message: "User profile retrieved successfully",
@@ -163,6 +167,9 @@ const getUserProfileWithRank = async (req, res, next) => {
 				school_name: user.school_name,
 				profile_url: user.profile_url,
 				grade_id: user.grade_id,
+				scholarship_marks: review ? review.scholarship_marks : null,
+				review_rating: review ? review.review_rating : null,
+				review_text: review ? review.review_text : null,
 				current_xp: user.current_xp,
 				current_level_id: user.current_level_id,
 				joined_at: user.joined_at,
@@ -183,6 +190,10 @@ const getUserProfileWithRank = async (req, res, next) => {
 					percentage: Math.round((xpInCurrentLevel / xpNeededForNextLevel) * 100),
 				},
 				badgeGallery,
+				recentBadges: badgeGallery
+					.filter((b) => b.earned)
+					.sort((a, b) => new Date(b.earned_at) - new Date(a.earned_at))
+					.slice(0, 4),
 				earnedBadgesCount: userBadges.length,
 				totalBadgesCount: allBadges.length,
 				completedQuizzesCount,
@@ -307,7 +318,76 @@ const updateProfile = async (req, res, next) => {
 	}
 };
 
+/**
+ * Updates user review/testimonial details: scholarship_marks, review_rating, and review_text.
+ */
+const updateReview = async (req, res, next) => {
+	try {
+		const userId = req.userId;
+		const { scholarship_marks, review_rating, review_text } = req.body;
+
+		if (!userId) {
+			return res.status(401).json({
+				status: "fail",
+				message: "Unauthorized: User ID not found",
+			});
+		}
+
+		// Validation
+		if (scholarship_marks !== undefined && scholarship_marks !== null) {
+			const marks = Number(scholarship_marks);
+			if (isNaN(marks) || marks < 0 || marks > 200) {
+				return res.status(400).json({
+					status: "fail",
+					message: "Scholarship marks must be a valid number between 0 and 200.",
+				});
+			}
+		}
+
+		if (review_rating !== undefined && review_rating !== null) {
+			const rating = Number(review_rating);
+			if (isNaN(rating) || rating < 1 || rating > 5) {
+				return res.status(400).json({
+					status: "fail",
+					message: "Review rating must be a valid integer between 1 and 5.",
+				});
+			}
+		}
+
+		let review = await UserReview.findOne({
+			where: { user_id: userId }
+		});
+
+		if (!review) {
+			review = await UserReview.create({
+				user_id: userId,
+				scholarship_marks: scholarship_marks !== "" && scholarship_marks !== undefined ? Number(scholarship_marks) : 0,
+				review_rating: review_rating !== "" && review_rating !== undefined ? Number(review_rating) : 5,
+				review_text: review_text !== "" && review_text !== undefined ? review_text.trim() : "",
+			});
+		} else {
+			if (scholarship_marks !== undefined) review.scholarship_marks = scholarship_marks !== "" ? Number(scholarship_marks) : 0;
+			if (review_rating !== undefined) review.review_rating = review_rating !== "" ? Number(review_rating) : 5;
+			if (review_text !== undefined) review.review_text = review_text !== "" ? review_text.trim() : "";
+			await review.save();
+		}
+
+		return res.status(200).json({
+			status: "success",
+			message: "Review updated successfully",
+			data: {
+				scholarship_marks: review.scholarship_marks,
+				review_rating: review.review_rating,
+				review_text: review.review_text,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 module.exports = {
 	getUserProfileWithRank,
 	updateProfile,
+	updateReview,
 };
