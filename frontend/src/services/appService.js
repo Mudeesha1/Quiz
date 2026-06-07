@@ -100,7 +100,16 @@ export async function downloadPaper(paperId) {
     return parseErrorResponse(response);
   }
 
-  return response.json();
+  const resData = await response.json();
+  const badges = resData.newlyEarnedBadges || resData.data?.newlyEarnedBadges;
+  if (resData.status === "success" && badges && badges.length > 0) {
+    badges.forEach(badge => {
+      window.dispatchEvent(new CustomEvent('badgeEarned', { detail: badge }));
+    });
+    window.dispatchEvent(new Event('profileUpdated'));
+  }
+
+  return resData;
 }
 
 export async function bookmarkPaper(paperId) {
@@ -119,7 +128,16 @@ export async function bookmarkPaper(paperId) {
     return parseErrorResponse(response);
   }
 
-  return response.json();
+  const resData = await response.json();
+  const badges = resData.newlyEarnedBadges || resData.data?.newlyEarnedBadges;
+  if (resData.status === "success" && badges && badges.length > 0) {
+    badges.forEach(badge => {
+      window.dispatchEvent(new CustomEvent('badgeEarned', { detail: badge }));
+    });
+    window.dispatchEvent(new Event('profileUpdated'));
+  }
+
+  return resData;
 }
 
 export async function completePaper(paperId) {
@@ -141,7 +159,16 @@ export async function completePaper(paperId) {
     return parseErrorResponse(response);
   }
 
-  return response.json();
+  const resData = await response.json();
+  const badges = resData.newlyEarnedBadges || resData.data?.newlyEarnedBadges;
+  if (resData.status === "success" && badges && badges.length > 0) {
+    badges.forEach(badge => {
+      window.dispatchEvent(new CustomEvent('badgeEarned', { detail: badge }));
+    });
+    window.dispatchEvent(new Event('profileUpdated'));
+  }
+
+  return resData;
 }
 
 export async function getQuizzes() {
@@ -202,7 +229,16 @@ export async function submitQuiz(quizId, payload) {
     return parseErrorResponse(response);
   }
 
-  return response.json();
+  const resData = await response.json();
+  const badges = resData.newlyEarnedBadges || resData.data?.newlyEarnedBadges;
+  if (resData.status === "success" && badges && badges.length > 0) {
+    badges.forEach(badge => {
+      window.dispatchEvent(new CustomEvent('badgeEarned', { detail: badge }));
+    });
+    window.dispatchEvent(new Event('profileUpdated'));
+  }
+
+  return resData;
 }
 export async function getLeaderboard(subject) {
   const session = getAuthSession();

@@ -39,6 +39,11 @@ export function StudentSidebar({ items, open, onClose, rankLabel = '#42' }) {
       }
     };
     fetchUserData();
+
+    window.addEventListener('profileUpdated', fetchUserData);
+    return () => {
+      window.removeEventListener('profileUpdated', fetchUserData);
+    };
   }, []);
 
   const displayRank = userData ? `#${userData.rank || '00'}` : (rankLabel !== '#42' ? rankLabel : '#--');
@@ -124,6 +129,11 @@ export function StudentHeader({ onMenuClick, avatarSrc, logoutLabel = 'Logout', 
       }
     };
     fetchUserData();
+
+    window.addEventListener('profileUpdated', fetchUserData);
+    return () => {
+      window.removeEventListener('profileUpdated', fetchUserData);
+    };
   }, []);
 
   const getProfileImageUrl = (profileUrl, fullname) => {

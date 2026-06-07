@@ -1,5 +1,7 @@
 const { Quiz, Question, QuestionOption, QuizAttempt, UserAnswer, Grade, Subject, GradeHasSubject, User, UserLevel } = require("../../../models/associations");
 const xpManager = require("../../../managers/xpManager");
+const badgeManager = require("../../../managers/badgeManager");
+
 
 /**
  * Resolves absolute URL for images if path is relative.
@@ -327,6 +329,9 @@ const submitQuiz = async (req, res, next) => {
 		// Update user XP & Level
 		const xpResult = await xpManager.updateUserXPAndLevel(userId, xpGained);
 
+		// Check and award badges
+		const newlyEarnedBadges = await badgeManager.checkAndAwardBadges(userId);
+
 		// Format elapsed time (M:SS)
 		const minutes = Math.floor(elapsedSeconds / 60);
 		const seconds = elapsedSeconds % 60;
@@ -346,6 +351,7 @@ const submitQuiz = async (req, res, next) => {
 				leveledUp: xpResult.leveledUp,
 				newLevelName: xpResult.currentLevel?.level_name,
 				newLevelNo: xpResult.currentLevel?.level_no,
+				newlyEarnedBadges: newlyEarnedBadges || [],
 			},
 		});
 	} catch (error) {
