@@ -15,6 +15,7 @@ import LeadingPage from './pages/LeadingPage';
 import ComponentLibraryDemo from './ui/ComponentLibraryDemo';
 import AdminDashboard from './pages/admin/AdminDashboard'; 
 import { getAuthSession } from './services/authService';
+import { Toast, useToast } from './ui/Toast';
 
 function ProtectedRoute({ children }) {
   const session = getAuthSession();
@@ -53,6 +54,20 @@ function PageTitleManager() {
 }
 
 function App() {
+  const toast = useToast();
+
+  useEffect(() => {
+    const handleBadgeEarned = (event) => {
+      const badge = event.detail;
+      toast.success(`🎉 Badge Unlocked: ${badge.name}! - ${badge.description}`, 5000);
+    };
+
+    window.addEventListener('badgeEarned', handleBadgeEarned);
+    return () => {
+      window.removeEventListener('badgeEarned', handleBadgeEarned);
+    };
+  }, [toast]);
+
   return (
     <Router>
       <PageTitleManager />
@@ -113,6 +128,17 @@ function App() {
         <Route path="/demo" element={<ComponentLibraryDemo />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>
+      <div className="fixed z-50 space-y-3 top-4 right-4">
+        {toast.toasts.map((item) => (
+          <Toast
+            key={item.id}
+            type={item.type}
+            message={item.message}
+            duration={item.duration}
+            onClose={() => toast.removeToast(item.id)}
+          />
+        ))}
+      </div>
     </Router>
   )
 }

@@ -174,6 +174,11 @@ async function updateUserProfile(data) {
     return parseErrorResponse(response);
   }
 
+  // Clear profile cache on successful update
+  clearProfileCache();
+  // Dispatch custom profileUpdated event to trigger real-time fetches across mounted components
+  window.dispatchEvent(new Event('profileUpdated'));
+
   return response.json();
 }
 
@@ -183,6 +188,34 @@ function updateAuthUser(updatedUser) {
     session.user = { ...session.user, ...updatedUser };
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
   }
+}
+
+async function updateUserReview(data) {
+  const session = getAuthSession();
+  
+  if (!session?.tokens?.accessToken) {
+    throw new Error("No valid session found");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/users/profile/review`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.tokens.accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  // Clear profile cache on successful update
+  clearProfileCache();
+  // Dispatch custom profileUpdated event to trigger real-time fetches across mounted components
+  window.dispatchEvent(new Event('profileUpdated'));
+
+  return response.json();
 }
 
 export {
@@ -197,4 +230,5 @@ export {
   resetPassword,
   updateUserProfile,
   updateAuthUser,
+  updateUserReview,
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearAuthSession, getUserProfile, requestPasswordReset, updateUserProfile, updateAuthUser } from '../services/authService';
+import { clearAuthSession, getUserProfile, requestPasswordReset, updateUserProfile, updateAuthUser, updateUserReview } from '../services/authService';
 import { Toast, useToast } from '../ui/Toast';
 import {
 	Award,
@@ -20,6 +20,7 @@ import {
 	Star,
 	Trophy,
 	X,
+	Quote,
 } from 'lucide-react';
 import Footer from '../ui/Footer';
 import { Badge as UIBadge, ButtonPrimary, ButtonSecondary, Card, CardContent, CardHeader, ProgressBar } from '../ui';
@@ -133,15 +134,24 @@ const getBadgeStyles = (badge) => {
 	}
 };
 
+const getBadgeImageUrl = (iconUrl) => {
+	const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+	if (!iconUrl) return '';
+	if (iconUrl.startsWith('http')) return iconUrl;
+	return `${API_BASE_URL}/uploads${iconUrl}`;
+};
+
 const getBadgeItem = (badge) => {
 	const mappedStyles = getBadgeStyles(badge);
 	return {
 		title: badge.name,
+		description: badge.description,
 		icon: mappedStyles.icon,
 		bg: mappedStyles.bg,
 		border: mappedStyles.border,
 		text: mappedStyles.text,
 		locked: mappedStyles.locked || false,
+		imgUrl: getBadgeImageUrl(badge.icon_url),
 	};
 };
 
@@ -167,26 +177,49 @@ function Glyph({ icon: Icon, className = '', size = 20, strokeWidth = 2.25 }) {
 }
 
 function ProfileBadge({ item }) {
-	if (item.locked) {
-		return (
-			<div className="flex flex-col items-center gap-2 opacity-40 grayscale">
-				<div className="flex items-center justify-center w-16 h-16 border-4 rounded-full border-outline-variant bg-surface-container md:h-20 md:w-20">
+	const badgeContent = item.locked ? (
+		<div className="flex flex-col items-center gap-2 opacity-40 grayscale w-full">
+			<div className="flex items-center justify-center w-16 h-16 border-4 rounded-full border-outline-variant bg-surface-container md:h-20 md:w-20 p-0.5 overflow-hidden">
+				{item.imgUrl ? (
+					<img src={item.imgUrl} alt={item.title} className="w-full h-full object-contain" />
+				) : (
 					<Glyph icon={item.icon} size={22} className="text-on-surface-variant md:text-3xl" />
-				</div>
-				<span className="text-xs font-bold text-center md:text-sm">{item.title}</span>
+				)}
 			</div>
-		);
-	}
-
-	return (
-		<div className="flex flex-col items-center gap-2 transition-transform group hover:scale-110">
-			<div className={`relative flex h-16 w-16 items-center justify-center rounded-full border-4 md:h-20 md:w-20 ${item.bg} ${item.border}`}>
-				<Glyph icon={item.icon} size={22} className={item.text} />
+			<span className="text-xs font-bold text-center md:text-sm">{item.title}</span>
+		</div>
+	) : (
+		<div className="flex flex-col items-center gap-2 transition-transform group-hover:scale-110 w-full">
+			<div className={`relative flex h-16 w-16 items-center justify-center rounded-full border-4 md:h-20 md:w-20 p-0.5 overflow-hidden ${item.bg} ${item.border}`}>
+				{item.imgUrl ? (
+					<img src={item.imgUrl} alt={item.title} className="w-full h-full object-contain" />
+				) : (
+					<Glyph icon={item.icon} size={22} className={item.text} />
+				)}
 				<div className="absolute p-1 bg-green-500 border-2 border-white rounded-full -right-1 -top-1">
 					<CheckCircle size={10} className="text-white" strokeWidth={3} />
 				</div>
 			</div>
 			<span className="text-xs font-bold text-center md:text-sm">{item.title}</span>
+		</div>
+	);
+
+	return (
+		<div className="relative group flex flex-col items-center w-full cursor-help">
+			{badgeContent}
+			
+			{/* Hover Tooltip Description Card */}
+			<div className="pointer-events-none absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-30 w-52 scale-90 opacity-0 transition-all duration-200 origin-bottom group-hover:scale-100 group-hover:opacity-100">
+				<div className="rounded-2xl bg-slate-900/95 backdrop-blur px-4 py-3 text-center text-xs font-medium text-white shadow-xl border border-slate-800">
+					<p className="font-extrabold text-amber-400 mb-1 text-sm">{item.title}</p>
+					<p className="text-xs text-slate-200 leading-relaxed">{item.description}</p>
+					<p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-wider">
+						{item.locked ? "🔒 Locked Badge" : "🏆 Unlocked!"}
+					</p>
+					{/* Tooltip Pointer/Arrow */}
+					<div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1.5 h-3 w-3 rotate-45 bg-slate-900/95 border-r border-b border-slate-800" />
+				</div>
+			</div>
 		</div>
 	);
 }
@@ -201,6 +234,7 @@ export default function StudentProfile() {
 		navigate('/', { replace: true });
 	};
 	const [profileModalOpen, setProfileModalOpen] = useState(false);
+	const [showAllBadges, setShowAllBadges] = useState(false);
 
 	// Profile name + DiceBear avatar seed/style
 	const [fullName, setFullName] = useState('Alex Johnson');
@@ -215,6 +249,13 @@ export default function StudentProfile() {
 	const [schoolName, setSchoolName] = useState('');
 	const [isSaving, setIsSaving] = useState(false);
 	const [isResettingPass, setIsResettingPass] = useState(false);
+
+	// Review states
+	const [reviewRating, setReviewRating] = useState(5);
+	const [scholarshipMarks, setScholarshipMarks] = useState('');
+	const [reviewText, setReviewText] = useState('');
+	const [isEditingReview, setIsEditingReview] = useState(false);
+	const [isSavingReview, setIsSavingReview] = useState(false);
 
 	// Use DiceBear 9.x API endpoint (style is selectable)
 	const getAvatarUrl = (seed) => `https://api.dicebear.com/9.x/${avatarStyle}/svg?seed=${encodeURIComponent(seed)}&background=%23ffffff`;
@@ -253,6 +294,11 @@ export default function StudentProfile() {
 				setGradeId(res.data.grade_id);
 				setSchoolName(res.data.school_name || '');
 				
+				setReviewRating(res.data.review_rating || 5);
+				setScholarshipMarks(res.data.scholarship_marks !== null && res.data.scholarship_marks !== undefined ? res.data.scholarship_marks : '');
+				setReviewText(res.data.review_text || '');
+				setIsEditingReview(!res.data.review_text);
+				
 				if (res.data.profile_url && res.data.profile_url.includes('api.dicebear.com')) {
 					const { style, seed } = parseAvatarUrl(res.data.profile_url);
 					setAvatarStyle(style);
@@ -285,6 +331,11 @@ export default function StudentProfile() {
 			}
 		};
 		loadGrades();
+
+		window.addEventListener('profileUpdated', fetchUserData);
+		return () => {
+			window.removeEventListener('profileUpdated', fetchUserData);
+		};
 	}, []);
 
 	const handleEditProfileOpen = () => {
@@ -346,6 +397,40 @@ export default function StudentProfile() {
 			toast.error(err.message || 'Failed to request password reset.');
 		} finally {
 			setIsResettingPass(false);
+		}
+	};
+
+	const handleSaveReview = async () => {
+		if (!reviewText.trim()) {
+			toast.error('Please write a review comment.');
+			return;
+		}
+		if (scholarshipMarks === '') {
+			toast.error('Please enter your Grade 5 Scholarship marks.');
+			return;
+		}
+		const marks = Number(scholarshipMarks);
+		if (isNaN(marks) || marks < 0 || marks > 200) {
+			toast.error('Marks must be a valid number between 0 and 200.');
+			return;
+		}
+
+		setIsSavingReview(true);
+		try {
+			const res = await updateUserReview({
+				scholarship_marks: marks,
+				review_rating: reviewRating,
+				review_text: reviewText,
+			});
+			if (res.status === 'success') {
+				toast.success('Review saved successfully!');
+				await fetchUserData();
+				setIsEditingReview(false);
+			}
+		} catch (err) {
+			toast.error(err.message || 'Failed to save review.');
+		} finally {
+			setIsSavingReview(false);
 		}
 	};
 
@@ -436,6 +521,137 @@ export default function StudentProfile() {
 									</div>
 								</CardContent>
 							</Card>
+
+							{/* Review Section */}
+							<Card className="border rounded-[1.75rem] shadow-sm border-outline-variant bg-surface-container-low overflow-hidden">
+								<CardHeader className="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
+									<h3 className="text-headline-md font-headline-md">Scholarship & Review</h3>
+									{!isEditingReview && userData?.review_text && (
+										<button 
+											onClick={() => setIsEditingReview(true)}
+											className="text-primary hover:text-primary-container p-1 rounded-full hover:bg-surface-container transition-colors"
+											aria-label="Edit review"
+										>
+											<Edit3 size={18} strokeWidth={2.25} />
+										</button>
+									)}
+								</CardHeader>
+								<CardContent className="p-6">
+									{isEditingReview ? (
+										<div className="space-y-4">
+											<div>
+												<label className="block mb-1 text-sm font-bold text-on-surface-variant">Grade 5 Scholarship Marks</label>
+												<input
+													type="number"
+													placeholder="Marks (out of 200)"
+													value={scholarshipMarks}
+													onChange={(e) => setScholarshipMarks(e.target.value)}
+													className="w-full rounded-full border border-outline-variant bg-white px-4 py-2.5 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+												/>
+											</div>
+
+											<div>
+												<label className="block mb-1 text-sm font-bold text-on-surface-variant">Your Rating</label>
+												<div className="flex items-center gap-1">
+													{[1, 2, 3, 4, 5].map((star) => (
+														<button
+															key={star}
+															type="button"
+															onClick={() => setReviewRating(star)}
+															className="p-1 hover:scale-110 transition-transform"
+														>
+															<Star
+																size={24}
+																className={star <= reviewRating ? "fill-amber-400 text-amber-400" : "text-outline-variant"}
+															/>
+														</button>
+													))}
+												</div>
+											</div>
+
+											<div>
+												<label className="block mb-1 text-sm font-bold text-on-surface-variant">Your Review</label>
+												<textarea
+													placeholder="Write your review about Quiz Master here..."
+													value={reviewText}
+													onChange={(e) => setReviewText(e.target.value)}
+													rows={3}
+													className="w-full rounded-2xl border border-outline-variant bg-white px-4 py-3 text-sm text-on-surface outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 resize-none"
+												/>
+											</div>
+
+											<div className="flex gap-2 pt-2">
+												{userData?.review_text && (
+													<ButtonSecondary
+														type="button"
+														onClick={() => {
+															setReviewRating(userData.review_rating || 5);
+															setScholarshipMarks(userData.scholarship_marks !== null && userData.scholarship_marks !== undefined ? userData.scholarship_marks : '');
+															setReviewText(userData.review_text || '');
+															setIsEditingReview(false);
+														}}
+														className="w-full py-2 text-sm border-2 rounded-full border-outline-variant text-on-surface hover:bg-surface-container-low"
+													>
+														Cancel
+													</ButtonSecondary>
+												)}
+												<ButtonPrimary
+													type="button"
+													disabled={isSavingReview}
+													onClick={handleSaveReview}
+													className="w-full rounded-full bg-primary py-2 text-sm text-button-text font-extrabold text-white shadow-[0px_4px_0px_0px_#2e23a8] transition hover:translate-y-0.5 hover:shadow-[0px_6px_0px_0px_#211a82] disabled:opacity-50"
+												>
+													{isSavingReview ? 'Saving...' : 'Save Review'}
+												</ButtonPrimary>
+											</div>
+										</div>
+									) : (
+										// Display mode (Image 2 style testimonial card)
+										<div className="relative rounded-lg border border-outline-variant/65 bg-white p-5 shadow-[0_4px_16px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)] border-t-4 border-t-pink-500">
+											<span className="absolute right-4 top-4 text-pink-200">
+												<Quote size={28} className="rotate-180 opacity-60 fill-pink-50 text-pink-200" />
+											</span>
+											
+											{/* Stars */}
+											<div className="flex items-center gap-0.5 mb-3">
+												{[1, 2, 3, 4, 5].map((star) => (
+													<Star
+														key={star}
+														size={14}
+														className={star <= reviewRating ? "fill-amber-400 text-amber-400" : "text-outline-variant"}
+													/>
+												))}
+											</div>
+
+											{/* Review Comment */}
+											<p className="text-sm font-semibold italic text-on-surface-variant mb-5 leading-relaxed">
+												"{reviewText}"
+											</p>
+
+											{/* Author & Score details */}
+											<div className="flex items-center justify-between gap-2 pt-2 border-t border-outline-variant/50">
+												<div className="flex items-center gap-3 min-w-0">
+													<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pink-500 text-white font-bold text-sm">
+														{fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+													</div>
+													<div className="min-w-0">
+														<p className="text-sm font-black text-on-surface truncate">{fullName}</p>
+														<p className="text-xs text-on-surface-variant truncate">
+															{schoolName || 'Scholarship Student'}
+														</p>
+													</div>
+												</div>
+												
+												{scholarshipMarks !== '' && (
+													<div className="shrink-0 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full font-bold text-xs shadow-sm border border-emerald-100/30">
+														{scholarshipMarks}/200
+													</div>
+												)}
+											</div>
+										</div>
+									)}
+								</CardContent>
+							</Card>
 						</div>
 
 						<div className="col-span-12 space-y-6 lg:col-span-8">
@@ -465,16 +681,37 @@ export default function StudentProfile() {
 										{userData ? `${userData.earnedBadgesCount} / ${userData.totalBadgesCount} Collected` : '0 / 0 Collected'}
 									</UIBadge>
 								</CardHeader>
-								<CardContent className="p-5 md:p-6">
+								<CardContent className="p-5 md:p-6 space-y-6">
 									<div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
 										{userData?.badgeGallery && userData.badgeGallery.length > 0 ? (
-											userData.badgeGallery.map((badge) => (
+											(showAllBadges ? userData.badgeGallery : userData.badgeGallery.slice(0, 20)).map((badge) => (
 												<ProfileBadge key={badge.id} item={getBadgeItem(badge)} />
 											))
 										) : (
 											<p className="col-span-full text-center text-sm font-semibold text-on-surface-variant py-4">No badges collected yet.</p>
 										)}
 									</div>
+
+									{userData?.badgeGallery && userData.badgeGallery.length > 20 && (
+										<div className="flex justify-center pt-2">
+											<button
+												onClick={() => setShowAllBadges(!showAllBadges)}
+												className="chunky-button flex items-center justify-center gap-2 rounded-full border-2 border-outline-variant bg-surface-container-low px-6 py-2.5 text-sm font-extrabold text-on-surface-variant shadow-[0px_4px_0px_0px_rgba(0,0,0,0.05)] transition-all hover:translate-y-0.5 hover:shadow-[0px_2px_0px_0px_rgba(0,0,0,0.05)] active:translate-y-1 active:shadow-none"
+											>
+												{showAllBadges ? (
+													<>
+														Show Less
+														<ChevronDown className="rotate-180 transition-transform duration-200" size={16} strokeWidth={2.5} />
+													</>
+												) : (
+													<>
+														Show All Badges ({userData.badgeGallery.length})
+														<ChevronDown className="transition-transform duration-200" size={16} strokeWidth={2.5} />
+													</>
+												)}
+											</button>
+										</div>
+									)}
 								</CardContent>
 							</Card>
 
@@ -487,7 +724,7 @@ export default function StudentProfile() {
 								</CardHeader>
 								<CardContent className="p-6 space-y-3">
 									{userData?.recentActivity && userData.recentActivity.length > 0 ? (
-										userData.recentActivity.map((activity) => (
+										userData.recentActivity.slice(0, 5).map((activity) => (
 											<div key={activity.title} className="flex items-center justify-between gap-4 rounded-full border border-outline-variant bg-white px-4 py-3 shadow-[0px_2px_0px_0px_rgba(0,0,0,0.03)]">
 												<div className="flex items-center gap-3">
 													<div className={`flex h-10 w-10 items-center justify-center rounded-full ${activity.type === 'quiz' ? 'bg-secondary-container/10' : 'bg-primary/10'}`}>

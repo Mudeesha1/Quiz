@@ -16,6 +16,7 @@ const QuizAttempt = require("./quizAttempt.model");
 const UserAnswer = require("./userAnswer.model");
 const Badge = require("./badge.model");
 const UserBadge = require("./userBadge.model");
+const UserReview = require("./userReview.model");
 
 // Grade - User relationship
 Grade.hasMany(User, {
@@ -332,6 +333,18 @@ Badge.belongsToMany(User, {
   as: "users",
 });
 
+// User - UserReview relationship (One-to-One)
+User.hasOne(UserReview, {
+  foreignKey: "user_id",
+  as: "review",
+  onDelete: "CASCADE",
+});
+
+UserReview.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+});
+
 module.exports = {
   Grade,
   User,
@@ -351,4 +364,5 @@ module.exports = {
   UserAnswer,
   Badge,
   UserBadge,
+  UserReview,
 };
