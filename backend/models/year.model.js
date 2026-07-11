@@ -11,7 +11,7 @@ const Year = sequelize.define(
 			allowNull: false,
 		},
 		years_name: {
-			type: DataTypes.STRING(4),
+			type: DataTypes.INTEGER,
 			allowNull: false,
 		},
 	},

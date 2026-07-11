@@ -49,8 +49,11 @@ const requireAdmin = requireAuth(["admin"]);
 
 const requireUser = requireAuth(["user"]);
 
+const requireUserOrAdmin = requireAuth(["user", "admin"]);
+
 module.exports = {
 	requireAuth,
 	requireAdmin,
 	requireUser,
+	requireUserOrAdmin,
 };

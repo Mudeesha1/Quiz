@@ -1,5 +1,6 @@
 const { Paper, SubjectHasYear, Subject, Year, UserPaperProgress, UserPaperBookmark } = require("../../../models/associations");
 const badgeManager = require("../../../managers/badgeManager");
+const { UPLOAD_CONFIG } = require("../../../middleware/fileUpload");
 
 /**
  * Get all papers along with unique subjects and years for filters,
@@ -81,6 +82,91 @@ const getPapers = async (req, res, next) => {
 				papers: formattedPapers,
 				subjects: ["All Subjects", ...dbSubjects.map((s) => s.subject_name)],
 				years: ["All Years", ...dbYears.map((y) => y.years_name)],
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+/**
+ * Create a paper record from an uploaded PDF.
+ */
+const createPaper = async (req, res, next) => {
+	try {
+		const { title, detail, subject, year } = req.body;
+		const uploadedFiles = req.files;
+
+		// Validate required fields
+		if (!title || !subject || !year || !uploadedFiles?.file) {
+			return res.status(400).json({
+				status: "fail",
+				message: "Title, subject, year, and a PDF file are required",
+			});
+		}
+
+		const pdfFile = uploadedFiles.file[0];
+		const imageFile = uploadedFiles.image?.[0] || null;
+
+		let subjectRecord = await Subject.findOne({
+			where: { subject_name: subject },
+		});
+
+		if (!subjectRecord) {
+			subjectRecord = await Subject.create({ subject_name: subject });
+		}
+
+		// Normalize year to integer
+		const normalizedYear = Number.parseInt(String(year || "").trim(), 10);
+
+		if (!Number.isInteger(normalizedYear)) {
+			return res.status(400).json({
+				status: "fail",
+				message: "A valid year is required",
+			});
+		}
+
+		let yearRecord = await Year.findOne({
+			where: { years_name: normalizedYear },
+		});
+
+		if (!yearRecord) {
+			yearRecord = await Year.create({ years_name: normalizedYear });
+		}
+
+		let subjectHasYear = await SubjectHasYear.findOne({
+			where: {
+				subjects_id: subjectRecord.id,
+				years_id: yearRecord.id,
+			},
+		});
+
+		if (!subjectHasYear) {
+			subjectHasYear = await SubjectHasYear.create({
+				subjects_id: subjectRecord.id,
+				years_id: yearRecord.id,
+			});
+		}
+
+		// Generate URLs for uploaded files
+		const pdfUrl = UPLOAD_CONFIG.getUrlPath("papers", pdfFile.filename);
+		const imageUrl = imageFile ? UPLOAD_CONFIG.getUrlPath("papers", imageFile.filename) : null;
+
+		const paper = await Paper.create({
+			title,
+			detail: detail || "",
+			image_url: imageUrl,
+			pdf_url: pdfUrl,
+			subjects_has_years_id: subjectHasYear.id,
+		});
+
+		return res.status(201).json({
+			status: "success",
+			message: "Paper created successfully",
+			data: {
+				paper,
+				subject: subjectRecord.subject_name,
+				year: yearRecord.years_name,
 			},
 		});
 	} catch (error) {
@@ -255,6 +341,7 @@ const completePaper = async (req, res, next) => {
 
 module.exports = {
 	getPapers,
+	createPaper,
 	downloadPaper,
 	bookmarkPaper,
 	completePaper,
