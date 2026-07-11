@@ -379,7 +379,7 @@ export default function PastPapers() {
 									<CardContent className="flex flex-col items-center justify-center py-16 text-center">
 										<Search size={56} className="mb-4 text-outline-variant" strokeWidth={1.75} />
 										<h3 className="mb-2 text-headline-md font-headline-md text-on-surface-variant">No Papers Found</h3>
-										<p className="max-w-sm mb-6 text-sm text-on-surface-variant">
+										<p className="max-w-full mb-6 text-sm text-on-surface-variant">
 											We couldn't find any papers matching your search. Try a different subject, year, or paper title.
 										</p>
 										<ButtonPrimary onClick={() => { setSearchTerm(''); setSelectedSubject('All Subjects'); setSelectedYear('All Years'); }} className="rounded-full bg-primary px-6 py-3 text-button-text text-white shadow-[0px_4px_0px_0px_#2e23a8]">

@@ -1,8 +1,9 @@
 const express = require("express");
 const { getGrades, getSubjectsByGrade, getTopRankedUsers, getLeaderboard } = require("./controllers/grade.controller");
-const { getPapers, downloadPaper, bookmarkPaper, completePaper } = require("./controllers/paper.controller");
+const { getPapers, createPaper, downloadPaper, bookmarkPaper, completePaper } = require("./controllers/paper.controller");
 const { getQuizzes, getQuizById, submitQuiz } = require("./controllers/quiz.controller");
-const { requireUser } = require("../../middleware/auth");
+const { requireUser, requireUserOrAdmin } = require("../../middleware/auth");
+const { uploadMultipleFiles } = require("../../middleware/fileUpload");
 
 const applicationRoutes = express.Router();
 
@@ -20,10 +21,11 @@ applicationRoutes.get("/grades/:gradeId/subjects", getSubjectsByGrade);
 applicationRoutes.get("/leaderboard/top-3", getTopRankedUsers);
 
 // Protected routes for registered users
-applicationRoutes.get("/papers", requireUser, getPapers);
-applicationRoutes.post("/papers/:paperId/download", requireUser, downloadPaper);
-applicationRoutes.post("/papers/:paperId/bookmark", requireUser, bookmarkPaper);
-applicationRoutes.post("/papers/:paperId/complete", requireUser, completePaper);
+applicationRoutes.get("/papers", requireUserOrAdmin, getPapers);
+applicationRoutes.post("/papers", requireUserOrAdmin, uploadMultipleFiles("papers"), createPaper);
+applicationRoutes.post("/papers/:paperId/download", requireUserOrAdmin, downloadPaper);
+applicationRoutes.post("/papers/:paperId/bookmark", requireUserOrAdmin, bookmarkPaper);
+applicationRoutes.post("/papers/:paperId/complete", requireUserOrAdmin, completePaper);
 
 // Quizzes
 applicationRoutes.get("/quizzes", requireUser, getQuizzes);
@@ -33,4 +35,4 @@ applicationRoutes.post("/quizzes/:quizId/submit", requireUser, submitQuiz);
 // Leaderboard
 applicationRoutes.get("/leaderboard", requireUser, getLeaderboard);
 
-module.exports = applicationRoutes;
+module.exports = applicationRoutes;

@@ -1,4 +1,6 @@
+const bcrypt = require("bcrypt");
 const { UserLevel, Badge } = require("../models/associations");
+const Admin = require("../models/admin.model");
 const xpManager = require("./xpManager");
 const badgeManager = require("./badgeManager");
 
@@ -27,6 +29,21 @@ const initializeSystemData = async () => {
 			console.log(`✓ Created ${badges.length} badges`);
 		} else {
 			console.log(`✓ Badges already exist (${badgesCount} badges)`);
+		}
+
+		const adminCount = await Admin.count();
+		if (adminCount === 0) {
+			console.log("👑 Creating default admin account...");
+			const hashedPassword = await bcrypt.hash("admin123", 10);
+			await Admin.create({
+				admin_name: "Admin User",
+				username: "admin123",
+				email: "admin@quizmaster.lk",
+				password: hashedPassword,
+			});
+			console.log("✓ Created default admin account");
+		} else {
+			console.log(`✓ Admin account already exists (${adminCount} admin(s))`);
 		}
 
 		console.log("✓ System data initialization complete!");

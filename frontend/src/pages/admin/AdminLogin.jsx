@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, Eye, EyeOff, LockKeyhole, ShieldCheck, UserRound, ShieldUser } 
-from 'lucide-react';
+import { ArrowRight, ChevronLeft, Eye, EyeOff, LockKeyhole, UserRound, ShieldUser } from 'lucide-react';
 
-import { ButtonPrimary, ButtonSecondary } from '../../ui/Button';
+import { ButtonSecondary } from '../../ui/Button';
+import { loginAdmin, saveAuthSession } from '../../services/authService';
 
 function LoginField({ label, id, icon: Icon, type = 'text', placeholder, value, onChange }) {
     return (
@@ -69,6 +69,8 @@ export default function AdminLogin() {
         username: '',
         password: '',
     });
+    const [errorMessage, setErrorMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleChange = (event) => {
         const { name, value } = event.target;
@@ -76,6 +78,31 @@ export default function AdminLogin() {
             ...current,
             [name]: value,
         }));
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setErrorMessage('');
+        setIsSubmitting(true);
+
+        try {
+            const response = await loginAdmin({
+                identifier: values.username,
+                password: values.password,
+            });
+
+            if (response?.status === 'success') {
+                saveAuthSession(response);
+                navigate('/admin/dashboard');
+                return;
+            }
+
+            throw new Error(response?.message || 'Unable to sign in.');
+        } catch (error) {
+            setErrorMessage(error.message || 'Unable to sign in.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -112,7 +139,7 @@ export default function AdminLogin() {
                     </div>
 
                     <section className="rounded-[2rem] border border-white/80 bg-white/80 p-6 shadow-[0_12px_40px_-18px_rgba(17,24,39,0.24)] backdrop-blur-md sm:p-8">
-                        <form className="space-y-5">
+                        <form className="space-y-5" onSubmit={handleSubmit}>
                             <LoginField
                                 label="Admin Email"
                                 id="username"
@@ -131,8 +158,14 @@ export default function AdminLogin() {
                                 onChange={handleChange}
                             />
 
-                            <ButtonSecondary type="button" className="w-full justify-center gap-2 py-4 text-base bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-300">
-                              LOGIN AS ADMIN
+                            {errorMessage ? (
+                                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                                    {errorMessage}
+                                </div>
+                            ) : null}
+
+                            <ButtonSecondary type="submit" disabled={isSubmitting} className="w-full justify-center gap-2 py-4 text-base bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-70">
+                                {isSubmitting ? 'Signing in...' : 'LOGIN AS ADMIN'}
                                 <ArrowRight size={18} />
                             </ButtonSecondary>
                         </form>

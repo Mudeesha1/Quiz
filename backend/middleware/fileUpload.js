@@ -99,6 +99,43 @@ const uploadSingleFile = (uploadType) => {
 };
 
 /**
+ * Multiple file upload middleware for papers (PDF + optional image)
+ */
+const uploadMultipleFiles = (uploadType) => {
+	try {
+		const configKey = getConfigKey(uploadType);
+		const maxSize = UPLOAD_CONFIG.MAX_FILE_SIZES[configKey];
+
+		if (!maxSize) {
+			throw new Error(`Unknown upload type: ${uploadType}`);
+		}
+
+		const storage = createStorage(uploadType);
+		const fileFilter = createFileFilter(uploadType);
+
+		return multer({
+			storage: storage,
+			fileFilter: fileFilter,
+			limits: {
+				fileSize: maxSize,
+			},
+		}).fields([
+			{ name: "file", maxCount: 1 },
+			{ name: "image", maxCount: 1 }
+		]);
+	} catch (error) {
+		console.error("Error creating upload middleware:", error);
+		// Return error handling middleware
+		return (req, res, next) => {
+			res.status(500).json({
+				status: "fail",
+				message: `Upload configuration error: ${error.message}`,
+			});
+		};
+	}
+};
+
+/**
  * Delete uploaded file
  */
 const deleteUploadedFile = (uploadType, filename) => {
@@ -124,6 +161,7 @@ const deleteUploadedFile = (uploadType, filename) => {
 
 module.exports = {
 	uploadSingleFile,
+	uploadMultipleFiles,
 	deleteUploadedFile,
 	UPLOAD_CONFIG,
 };

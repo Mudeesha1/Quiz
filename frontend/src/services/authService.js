@@ -52,6 +52,22 @@ async function loginUser(data) {
   return response.json();
 }
 
+async function loginAdmin(data) {
+  const response = await fetch(`${API_BASE_URL}/admin/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
 function saveAuthSession(payload) {
   if (!payload) return;
 
@@ -221,6 +237,7 @@ async function updateUserReview(data) {
 export {
   registerUser,
   loginUser,
+  loginAdmin,
   saveAuthSession,
   clearAuthSession,
   getAuthSession,

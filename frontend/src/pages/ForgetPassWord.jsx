@@ -147,7 +147,7 @@ export default function ForgetPassWord() {
                 </div>
             </main>
 
-            {/* Decorative Illustration Side Elements (Visible on larger screens) */}
+           {/* Decorative Illustration Side Elements (Visible on larger screens) }
             <div className="hidden xl:block fixed left-12 top-1/2 -translate-y-1/2 w-[300px] h-[400px] rounded-lg overflow-hidden border border-outline-variant shadow-sm rotate-[-2deg] pointer-events-none">
                 <img
                     alt="Learning Concept"

@@ -13,7 +13,16 @@ import PastPapers from './pages/PastPapers';
 import StudentProfile from './pages/StudentProfile';
 import LeadingPage from './pages/LeadingPage';
 import ComponentLibraryDemo from './ui/ComponentLibraryDemo';
-import AdminDashboard from './pages/admin/AdminDashboard'; 
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminAddPasspaper from './pages/admin/AdminAddPasspaper';
+import AdminUserManage from './pages/admin/AdminUserManage';
+import AdminAddQuiz from './pages/admin/AdminAddQuiz';
+import AdminLogin from './pages/admin/AdminLogin';
+import Error405Page from './pages/errors/405error';
+import Error401Page from './pages/errors/401error';
+import Error404Page from './pages/errors/404error';
+import Error403Page from './pages/errors/403error';
+import Error500Page from './pages/errors/500error';
 import { getAuthSession } from './services/authService';
 import { Toast, useToast } from './ui/Toast';
 
@@ -44,7 +53,12 @@ function PageTitleManager() {
       '/leading': 'Leaderboard | Quiz Master',
       '/profile': 'Profile | Quiz Master',
       '/demo': 'Component Demo | Quiz Master',
+      '/admin/login': 'Admin Login | Quiz Master',
       '/admin/dashboard': 'Admin Dashboard | Quiz Master',
+      '/admin/past-papers': 'Past Papers | Quiz Master',
+      '/admin/users': 'Manage Users | Quiz Master',
+      '/admin/quizzes': 'Manage Quizzes | Quiz Master',
+      '/403': 'Access Denied | Quiz Master',
     };
 
     document.title = titles[location.pathname] ?? 'Quiz Master';
@@ -125,8 +139,17 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/demo" element={<ComponentLibraryDemo />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/past-papers" element={<AdminAddPasspaper />} />
+        <Route path="/admin/users" element={<AdminUserManage />} />
+        <Route path="/admin/quizzes" element={<AdminAddQuiz />} />
+        <Route path="/401" element={<Error401Page />} />
+        <Route path="/403" element={<Error403Page />} />
+        <Route path="/404" element={<Error404Page />} />
+        <Route path="/405" element={<Error405Page />} />
+        <Route path="/500" element={<Error500Page />} />
+        <Route path="/demo" element={<ComponentLibraryDemo />} />
       </Routes>
       <div className="fixed z-50 space-y-3 top-4 right-4">
         {toast.toasts.map((item) => (
