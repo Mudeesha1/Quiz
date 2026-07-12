@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   Ban,
   CheckCircle2,
   ChevronDown,
   Edit3,
+  Eye,
   FileText,
   LayoutDashboard,
+  Loader2,
   Plus,
   Search,
   Settings,
@@ -14,10 +16,12 @@ import {
   Sparkles,
   Trash2,
   Users,
+  X,
 } from 'lucide-react';
 import Footer from '../../ui/Footer';
 import { AdminHeader, AdminSidebar, ButtonPrimary, Card } from '../../ui';
 import logoicon from '../../assets/icons/logo.png';
+import { getAuthSession } from '../../services/authService';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },
@@ -27,59 +31,292 @@ const NAV_ITEMS = [
   { label: 'Settings', icon: Settings, to: '/admin/settings' },
 ];
 
-const USERS = [
-  {
-    id: 1,
-    name: 'Leo Spark',
-    email: 'leo.spark@example.com',
-    grade: 'Grade 3',
-    joined: 'Oct 12, 2023',
-    status: 'Active',
-    accent: 'from-indigo-500 to-violet-500',
-  },
-  {
-    id: 2,
-    name: 'Mia Bright',
-    email: 'mia.b@example.com',
-    grade: 'Grade 5',
-    joined: 'Nov 05, 2023',
-    status: 'Active',
-    accent: 'from-amber-500 to-orange-500',
-  },
-  {
-    id: 3,
-    name: 'Sam Cloud',
-    email: 'sammy.c@example.com',
-    grade: 'Grade 2',
-    joined: 'Jan 22, 2024',
-    status: 'Inactive',
-    accent: 'from-slate-500 to-slate-700',
-  },
-  {
-    id: 4,
-    name: 'Zoe Star',
-    email: 'zoe.star@example.com',
-    grade: 'Grade 4',
-    joined: 'Feb 14, 2024',
-    status: 'Active',
-    accent: 'from-emerald-500 to-teal-500',
-  },
-];
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 export default function AdminUserManage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
+  
+  const [users, setUsers] = useState([]);
+  const [gradeOptions, setGradeOptions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [formData, setFormData] = useState({
+    fullname: '',
+    username: '',
+    email: '',
+    password: '',
+    school_name: '',
+    grade: 'Grade 5',
+    status: 'Active',
+    file: null,
+  });
+
+  // Performance Modal State
+  const [isPerformanceModalOpen, setIsPerformanceModalOpen] = useState(false);
+  const [performanceUser, setPerformanceUser] = useState(null);
+  const [performanceData, setPerformanceData] = useState({ quizAttempts: [], badges: [] });
+  const [isPerformanceLoading, setIsPerformanceLoading] = useState(false);
+
+  const handleOpenPerformanceModal = async (user) => {
+    setPerformanceUser(user);
+    setPerformanceData({ quizAttempts: [], badges: [] });
+    setIsPerformanceModalOpen(true);
+    setIsPerformanceLoading(true);
+    setErrorMessage('');
+
+    const session = getAuthSession();
+    if (!session?.tokens?.accessToken) {
+      setErrorMessage('Authorization expired. Please login again.');
+      setIsPerformanceLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users/${user.id}/performance`, {
+        headers: {
+          Authorization: `Bearer ${session.tokens.accessToken}`,
+        },
+      });
+
+      const resJson = await response.json();
+      if (!response.ok) {
+        throw new Error(resJson?.message || 'Failed to fetch performance data.');
+      }
+
+      if (resJson?.data) {
+        setPerformanceData({
+          quizAttempts: resJson.data.quizAttempts || [],
+          badges: resJson.data.badges || [],
+        });
+      }
+    } catch (err) {
+      setErrorMessage(err.message || 'Error loading performance details.');
+    } finally {
+      setIsPerformanceLoading(false);
+    }
+  };
+
+  // Fetch Users and Grades
+  const loadData = async () => {
+    const session = getAuthSession();
+    if (!session?.tokens?.accessToken) return;
+
+    setIsLoading(true);
+    try {
+      const [usersResponse, gradesResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/admin/users`, {
+          headers: {
+            Authorization: `Bearer ${session.tokens.accessToken}`,
+          },
+        }),
+        fetch(`${API_BASE_URL}/app/grades`, {
+          headers: {
+            Authorization: `Bearer ${session.tokens.accessToken}`,
+          },
+        }),
+      ]);
+
+      if (!usersResponse.ok) {
+        const errJson = await usersResponse.json().catch(() => ({}));
+        throw new Error(errJson?.message || 'Failed to fetch users.');
+      }
+      const usersData = await usersResponse.json();
+      if (Array.isArray(usersData?.data?.users)) {
+        setUsers(usersData.data.users);
+      }
+
+      if (!gradesResponse.ok) {
+        const errJson = await gradesResponse.json().catch(() => ({}));
+        throw new Error(errJson?.message || 'Failed to fetch grades.');
+      }
+      const gradesData = await gradesResponse.json();
+      const grades = Array.isArray(gradesData?.data)
+        ? gradesData.data
+            .map((grade) => grade.grade_name || grade.name || grade.title)
+            .filter(Boolean)
+        : [];
+      setGradeOptions(grades);
+      if (grades.length > 0) {
+        setFormData((prev) => ({ ...prev, grade: grades[0] }));
+      }
+    } catch (err) {
+      setErrorMessage(err.message || 'Failed to load user directories.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleOpenAddModal = () => {
+    setEditingUser(null);
+    setFormData({
+      fullname: '',
+      username: '',
+      email: '',
+      password: '',
+      school_name: '',
+      grade: gradeOptions[0] || 'Grade 5',
+      status: 'Active',
+      file: null,
+    });
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (user) => {
+    setEditingUser(user);
+    setFormData({
+      fullname: user.fullname || '',
+      username: user.username || '',
+      email: user.email || '',
+      password: '', // Not editing password here
+      school_name: user.school_name || '',
+      grade: user.grade || 'Grade 5',
+      status: user.status || 'Active',
+      file: null,
+    });
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsModalOpen(true);
+  };
+
+  const handleFormSubmit = async (event) => {
+    event.preventDefault();
+    const session = getAuthSession();
+    if (!session?.tokens?.accessToken) {
+      setErrorMessage('Authorization expired. Please login again.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      const url = editingUser
+        ? `${API_BASE_URL}/admin/users/${editingUser.id}`
+        : `${API_BASE_URL}/admin/users`;
+      const method = editingUser ? 'PUT' : 'POST';
+
+      // Build FormData payload
+      const payload = new FormData();
+      payload.append('fullname', formData.fullname.trim());
+      payload.append('email', formData.email.trim());
+      payload.append('school_name', formData.school_name.trim());
+      payload.append('grade', formData.grade);
+
+      if (editingUser) {
+        payload.append('status', formData.status);
+      } else {
+        payload.append('username', formData.username.trim());
+        payload.append('password', formData.password);
+      }
+
+      if (formData.file) {
+        payload.append('file', formData.file);
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${session.tokens.accessToken}`,
+        },
+        body: payload,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to save the user.');
+      }
+
+      setIsModalOpen(false);
+      setSuccessMessage(editingUser ? 'User details updated successfully.' : 'New user created successfully.');
+      loadData(); // Reload latest list
+    } catch (err) {
+      setErrorMessage(err.message || 'Error occurred while saving the user.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    const confirmDelete = window.confirm(`Are you sure you want to permanently delete the user "${user.fullname}"?`);
+    if (!confirmDelete) return;
+
+    const session = getAuthSession();
+    if (!session?.tokens?.accessToken) {
+      setErrorMessage('Authorization expired. Please login again.');
+      return;
+    }
+
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users/${user.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.tokens.accessToken}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to delete the user.');
+      }
+
+      setSuccessMessage('User account deleted successfully.');
+      setUsers((current) => current.filter((u) => u.id !== user.id));
+    } catch (err) {
+      setErrorMessage(err.message || 'Error occurred while deleting user.');
+    }
+  };
+
+  // Helper to generate full profile image path
+  const getProfileImageUrl = (profileUrl, fullname) => {
+    if (profileUrl) {
+      if (profileUrl.startsWith('/')) {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+        const baseUrl = apiBase.replace('/api/v1', '');
+        if (profileUrl.startsWith('/api/v1/uploads/')) {
+          return `${baseUrl}${profileUrl}`;
+        }
+        return `${apiBase}${profileUrl}`;
+      }
+      return profileUrl;
+    }
+    const initials = fullname
+      ?.split(' ')
+      .map((name) => name[0])
+      .join('')
+      .toUpperCase() || 'U';
+    return `https://api.dicebear.com/9.x/initials/svg?seed=${initials}&background=%23ffffff`;
+  };
 
   const visibleUsers = useMemo(() => {
-    return USERS.filter((user) => {
-      const matchesSearch = `${user.name} ${user.email} ${user.grade}`
+    return users.filter((user) => {
+      const matchesSearch = `${user.fullname} ${user.email} ${user.grade} ${user.school_name || ''}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       const matchesStatus = selectedStatus === 'All Status' || user.status === selectedStatus;
       return matchesSearch && matchesStatus;
     });
-  }, [searchTerm, selectedStatus]);
+  }, [users, searchTerm, selectedStatus]);
+
+  const activeCount = useMemo(() => users.filter((u) => u.status === 'Active').length, [users]);
+  const inactiveCount = useMemo(() => users.filter((u) => u.status === 'Inactive').length, [users]);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-surface text-on-surface font-body-md">
@@ -104,7 +341,10 @@ export default function AdminUserManage() {
                 </p>
               </div>
 
-              <ButtonPrimary className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold">
+              <ButtonPrimary
+                onClick={handleOpenAddModal}
+                className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold"
+              >
                 <Plus size={16} /> Add New User
               </ButtonPrimary>
             </div>
@@ -112,21 +352,32 @@ export default function AdminUserManage() {
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               <Card className="rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm">
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Total Users</p>
-                <p className="mt-3 text-3xl font-black text-slate-900">1,248</p>
+                <p className="mt-3 text-3xl font-black text-slate-900">{users.length}</p>
               </Card>
               <Card className="rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Active Today</p>
-                <p className="mt-3 text-3xl font-black text-slate-900">312</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Active Students</p>
+                <p className="mt-3 text-3xl font-black text-slate-900">{activeCount}</p>
               </Card>
               <Card className="rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Pending Review</p>
-                <p className="mt-3 text-3xl font-black text-slate-900">18</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Inactive Students</p>
+                <p className="mt-3 text-3xl font-black text-slate-900">{inactiveCount}</p>
               </Card>
             </div>
           </div>
         </section>
 
         <section className="px-4 pb-6 md:px-8 md:px-10">
+          {successMessage && (
+            <div className="mb-6 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700 shadow-sm border border-emerald-100">
+              {successMessage}
+            </div>
+          )}
+          {errorMessage && (
+            <div className="mb-6 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-600 shadow-sm border border-rose-100">
+              {errorMessage}
+            </div>
+          )}
+
           <Card className="overflow-hidden rounded-[2rem] border border-surface-container-highest bg-white/80 shadow-soft">
             <div className="flex flex-col gap-4 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between md:p-6">
               <div>
@@ -160,81 +411,478 @@ export default function AdminUserManage() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm text-slate-700">
-                <thead className="bg-slate-50 text-slate-500">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold">Name</th>
-                    <th className="px-6 py-4 font-semibold">Email</th>
-                    <th className="px-6 py-4 font-semibold text-center">Grade</th>
-                    <th className="px-6 py-4 font-semibold">Joined</th>
-                    <th className="px-6 py-4 font-semibold text-center">Status</th>
-                    <th className="px-6 py-4 font-semibold text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {visibleUsers.map((user) => (
-                    <tr key={user.id} className="transition-colors hover:bg-slate-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${user.accent} text-sm font-black text-white`}>
-                            {user.name
-                              .split(' ')
-                              .map((part) => part[0])
-                              .join('')}
-                          </div>
-                          <span className="font-semibold text-slate-900">{user.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-500">{user.email}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="rounded-full bg-primary-fixed px-3 py-1 text-xs font-bold text-primary">
-                          {user.grade}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-slate-500">{user.joined}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${
-                            user.status === 'Active'
-                              ? 'bg-emerald-50 text-emerald-700'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {user.status === 'Active' ? <CheckCircle2 size={14} /> : <Ban size={14} />}
-                          {user.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button className="rounded-full p-2 text-slate-500 transition hover:bg-primary-fixed hover:text-primary" aria-label={`Edit ${user.name}`}>
-                            <Edit3 size={16} />
-                          </button>
-                          <button className="rounded-full p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600" aria-label={`Delete ${user.name}`}>
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 md:flex-row md:items-center md:justify-between">
-              <span className="text-sm text-slate-500">Showing {visibleUsers.length} of {USERS.length} students</span>
-              <div className="flex gap-2">
-                <button className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100" disabled>
-                  Previous
-                </button>
-                <button className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">
-                  Next
-                  <ArrowRight size={16} className="ml-2 inline" />
-                </button>
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center p-12 text-slate-500">
+                <Loader2 className="animate-spin text-primary" size={32} />
+                <p className="mt-2 text-sm">Loading users from database...</p>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm text-slate-700">
+                    <thead className="bg-slate-50 text-slate-500">
+                      <tr>
+                        <th className="px-6 py-4 font-semibold">Name</th>
+                        <th className="px-6 py-4 font-semibold">Email</th>
+                        <th className="px-6 py-4 font-semibold">School</th>
+                        <th className="px-6 py-4 font-semibold text-center">Grade</th>
+                        <th className="px-6 py-4 font-semibold">Joined</th>
+                        <th className="px-6 py-4 font-semibold text-center">Status</th>
+                        <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {visibleUsers.map((user) => (
+                        <tr key={user.id} className="transition-colors hover:bg-slate-50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={getProfileImageUrl(user.profile_url, user.fullname)}
+                                alt={user.fullname}
+                                className="h-10 w-10 rounded-full object-cover border border-slate-200 shadow-sm"
+                                onError={(e) => {
+                                  e.target.src = `https://api.dicebear.com/9.x/initials/svg?seed=${user.fullname}&background=%23ffffff`;
+                                }}
+                              />
+                              <span className="font-semibold text-slate-900">{user.fullname}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500">{user.email}</td>
+                          <td className="px-6 py-4 text-slate-500 font-medium max-w-[180px] truncate">
+                            {user.school_name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="rounded-full bg-primary-fixed px-3 py-1 text-xs font-bold text-primary">
+                              {user.grade}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500">
+                            {user.joined_at
+                              ? new Date(user.joined_at).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: '2-digit',
+                                })
+                              : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span
+                              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${
+                                user.status === 'Active'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+                              }`}
+                            >
+                              {user.status === 'Active' ? <CheckCircle2 size={14} /> : <Ban size={14} />}
+                              {user.status || 'Active'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleOpenPerformanceModal(user)}
+                                className="rounded-full p-2 text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-600 cursor-pointer"
+                                aria-label={`View performance of ${user.fullname}`}
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleOpenEditModal(user)}
+                                className="rounded-full p-2 text-slate-500 transition hover:bg-primary-fixed hover:text-primary cursor-pointer"
+                                aria-label={`Edit ${user.fullname}`}
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user)}
+                                className="rounded-full p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                                aria-label={`Delete ${user.fullname}`}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {visibleUsers.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500 m-6">
+                    No users match your search criteria.
+                  </div>
+                ) : null}
+
+                <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 md:flex-row md:items-center md:justify-between">
+                  <span className="text-sm text-slate-500">Showing {visibleUsers.length} of {users.length} students</span>
+                  <div className="flex gap-2">
+                    <button className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100" disabled>
+                      Previous
+                    </button>
+                    <button className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100" disabled>
+                      Next
+                      <ArrowRight size={16} className="ml-2 inline" />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </Card>
         </section>
+
+        {/* Add/Edit Modal */}
+        {isModalOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-5xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary/80">
+                    {editingUser ? 'Edit User' : 'New User'}
+                  </p>
+                  <h3 className="mt-1 text-2xl font-black text-slate-900">
+                    {editingUser ? 'Edit Student Details' : 'Register a new student'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingUser(null);
+                    setErrorMessage('');
+                  }}
+                  className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleFormSubmit} className="mt-6 space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Full Name
+                    <input
+                      value={formData.fullname}
+                      onChange={(event) => setFormData((value) => ({ ...value, fullname: event.target.value }))}
+                      placeholder="Sahan Kaushalya"
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-primary focus:bg-white"
+                      required
+                    />
+                  </label>
+
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Email Address
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(event) => setFormData((value) => ({ ...value, email: event.target.value }))}
+                      placeholder="sahan@example.com"
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-primary focus:bg-white"
+                      required
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Username
+                    <input
+                      value={formData.username}
+                      onChange={(event) => setFormData((value) => ({ ...value, username: event.target.value }))}
+                      placeholder="sahan123"
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-primary focus:bg-white disabled:opacity-50 disabled:bg-slate-100"
+                      required
+                      disabled={!!editingUser}
+                    />
+                  </label>
+
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Grade
+                    <select
+                      value={formData.grade}
+                      onChange={(event) => setFormData((value) => ({ ...value, grade: event.target.value }))}
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-primary focus:bg-white"
+                    >
+                      {gradeOptions.length > 0 ? (
+                        gradeOptions.map((grade) => (
+                          <option key={grade} value={grade}>{grade}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="Grade 5">Grade 5</option>
+                          <option value="Grade 6">Grade 6</option>
+                        </>
+                      )}
+                    </select>
+                  </label>
+                </div>
+
+                {!editingUser && (
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Password
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(event) => setFormData((value) => ({ ...value, password: event.target.value }))}
+                      placeholder="••••••••"
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-primary focus:bg-white"
+                      required
+                    />
+                  </label>
+                )}
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block text-sm font-semibold text-slate-700">
+                    School Name
+                    <input
+                      value={formData.school_name}
+                      onChange={(event) => setFormData((value) => ({ ...value, school_name: event.target.value }))}
+                      placeholder="Central College"
+                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-primary focus:bg-white"
+                      required
+                    />
+                  </label>
+
+                  {editingUser && (
+                    <label className="block text-sm font-semibold text-slate-700">
+                      Account Status
+                      <select
+                        value={formData.status}
+                        onChange={(event) => setFormData((value) => ({ ...value, status: event.target.value }))}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-primary focus:bg-white"
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                    </label>
+                  )}
+                </div>
+
+                <label className="block text-sm font-semibold text-slate-700">
+                  Profile Picture
+                  <div className="mt-2 flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <img
+                      src={
+                        formData.file
+                          ? URL.createObjectURL(formData.file)
+                          : getProfileImageUrl(editingUser?.profile_url, formData.fullname)
+                      }
+                      alt="Avatar Preview"
+                      className="h-16 w-16 rounded-full object-cover border border-slate-200 bg-white"
+                      onError={(e) => {
+                        e.target.src = `https://api.dicebear.com/9.x/initials/svg?seed=${formData.fullname || 'U'}&background=%23ffffff`;
+                      }}
+                    />
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/jpeg, image/png, image/webp"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] || null;
+                          setFormData((value) => ({ ...value, file }));
+                        }}
+                        className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-primary-container file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white file:cursor-pointer"
+                      />
+                      <p className="mt-1 text-xs text-slate-400">Allowed formats: JPG, PNG, WEBP. Max size: 3MB.</p>
+                    </div>
+                  </div>
+                </label>
+
+                <div className="mt-8 flex justify-end gap-3 border-t border-slate-100 pt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setEditingUser(null);
+                    }}
+                    className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <ButtonPrimary
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold disabled:opacity-55"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-1 animate-spin" size={16} /> Saving...
+                      </>
+                    ) : (
+                      'Save Student'
+                    )}
+                  </ButtonPrimary>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
+
+        {/* User Performance Modal */}
+        {isPerformanceModalOpen && performanceUser ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-6xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+              
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={getProfileImageUrl(performanceUser.profile_url, performanceUser.fullname)}
+                    alt={performanceUser.fullname}
+                    className="h-16 w-16 rounded-full object-cover border border-slate-200"
+                    onError={(e) => {
+                      e.target.src = `https://api.dicebear.com/9.x/initials/svg?seed=${performanceUser.fullname}&background=%23ffffff`;
+                    }}
+                  />
+                  <div>
+                    <span className="text-sm font-semibold uppercase tracking-[0.24em] text-primary/80">Student Performance</span>
+                    <h3 className="text-2xl font-black text-slate-900">{performanceUser.fullname}</h3>
+                    <p className="text-xs text-slate-500">{performanceUser.email} • {performanceUser.school_name || 'No school'}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPerformanceModalOpen(false)}
+                  className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Student Stats Summary Bar */}
+              <div className="mt-4 grid grid-cols-3 gap-4 rounded-2xl bg-slate-50 p-4 text-center">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Current Grade</p>
+                  <p className="mt-1 text-lg font-bold text-slate-800">{performanceUser.grade || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Student Rank/Level</p>
+                  <p className="mt-1 text-lg font-bold text-slate-800">{performanceUser.level || 'Starter'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">XP Gained</p>
+                  <p className="mt-1 text-lg font-bold text-slate-800">{performanceUser.current_xp} XP</p>
+                </div>
+              </div>
+
+              {isPerformanceLoading ? (
+                <div className="flex flex-col items-center justify-center p-12 text-slate-500">
+                  <Loader2 className="animate-spin text-primary" size={32} />
+                  <p className="mt-2 text-sm">Fetching student badges and quiz scores...</p>
+                </div>
+              ) : (
+                <div className="mt-6 grid gap-6 md:grid-cols-2">
+                  
+                  {/* Left Column: Quiz History */}
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 mb-3 flex items-center gap-2">
+                      <Sparkles size={18} className="text-primary" /> Quiz Attempts ({performanceData.quizAttempts.length})
+                    </h4>
+                    
+                    <div className="overflow-y-auto max-h-[300px] border border-slate-100 rounded-2xl bg-white shadow-inner p-2 space-y-2">
+                      {performanceData.quizAttempts.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center py-8">No quiz attempts yet.</p>
+                      ) : (
+                        performanceData.quizAttempts.map((attempt) => (
+                          <div key={attempt.id} className="flex justify-between items-center p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition">
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-slate-800 truncate" title={attempt.quiz_name}>{attempt.quiz_name}</p>
+                              <p className="text-xxs text-slate-400">
+                                {attempt.completed_at
+                                  ? new Date(attempt.completed_at).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })
+                                  : 'In Progress'}
+                              </p>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-black ${
+                                attempt.score >= 75 
+                                  ? 'bg-emerald-50 text-emerald-700' 
+                                  : attempt.score >= 50 
+                                  ? 'bg-amber-50 text-amber-700' 
+                                  : 'bg-rose-50 text-rose-700'
+                              }`}>
+                                {attempt.score !== null ? `${Math.round(attempt.score)}%` : 'N/A'}
+                              </span>
+                              <p className="text-xxs text-emerald-600 font-bold mt-0.5">+{attempt.xp_gained || 0} XP</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Badge Gallery */}
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 mb-3 flex items-center gap-2">
+                      <ShieldCheck size={18} className="text-primary" /> Collected Badges ({performanceData.badges.length})
+                    </h4>
+                    
+                    <div className="overflow-y-auto max-h-[300px] border border-slate-100 rounded-2xl bg-white shadow-inner p-3">
+                      {performanceData.badges.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center py-8">No badges earned yet.</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          {performanceData.badges.map((badge) => (
+                            <div key={badge.id} className="flex gap-2.5 items-center p-2 rounded-xl bg-slate-50 border border-slate-100 hover:scale-101 transition-transform">
+                              <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-primary-fixed/20 flex items-center justify-center text-primary font-bold">
+                                {badge.icon_url ? (
+                                  <img
+                                    src={
+                                      badge.icon_url.startsWith('/')
+                                        ? `${API_BASE_URL}/uploads${badge.icon_url}`
+                                        : badge.icon_url
+                                    }
+                                    alt={badge.name}
+                                    className="h-8 w-8 object-contain"
+                                    onError={(e) => {
+                                      e.target.src = `https://api.dicebear.com/9.x/shapes/svg?seed=${badge.name}`;
+                                    }}
+                                  />
+                                ) : (
+                                  '🏆'
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-800 truncate" title={badge.name}>{badge.name}</p>
+                                <p className="text-sm text-slate-400 truncate text-wrap" title={badge.description}>{badge.description}</p>
+                                <p className="text-[9px] text-slate-400 font-semibold text-emerald-700">
+                                  {badge.earned_at
+                                    ? new Date(badge.earned_at).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric'
+                                      })
+                                    : ''}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* Close Button Footer */}
+              <div className="mt-6 flex justify-end border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsPerformanceModalOpen(false)}
+                  className="rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white transition hover:opacity-90 cursor-pointer shadow-soft"
+                >
+                  Close Profile
+                </button>
+              </div>
+
+            </div>
+          </div>
+        ) : null}
 
         <Footer />
       </main>
