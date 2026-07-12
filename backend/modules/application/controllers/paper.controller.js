@@ -1,5 +1,7 @@
 const { Paper, SubjectHasYear, Subject, Year, UserPaperProgress, UserPaperBookmark } = require("../../../models/associations");
 const badgeManager = require("../../../managers/badgeManager");
+const fs = require("fs");
+const path = require("path");
 const { UPLOAD_CONFIG } = require("../../../middleware/fileUpload");
 
 /**
@@ -62,6 +64,20 @@ const getPapers = async (req, res, next) => {
 			const isCompleted = paper.userProgress && paper.userProgress.length > 0 && paper.userProgress[0].is_completed === true;
 			const isBookmarked = paper.userBookmarks && paper.userBookmarks.length > 0;
 
+			// Read file size dynamically from disk
+			let size = null;
+			if (paper.pdf_url) {
+				try {
+					const filePath = path.join(__dirname, "../../../uploads", paper.pdf_url);
+					if (fs.existsSync(filePath)) {
+						const stats = fs.statSync(filePath);
+						size = stats.size;
+					}
+				} catch (err) {
+					console.error("Error getting file size dynamically:", err.message);
+				}
+			}
+
 			return {
 				id: paper.id,
 				title: paper.title,
@@ -73,6 +89,7 @@ const getPapers = async (req, res, next) => {
 				isDownloaded,
 				isCompleted,
 				isBookmarked,
+				size,
 			};
 		});
 
@@ -149,8 +166,8 @@ const createPaper = async (req, res, next) => {
 		}
 
 		// Generate URLs for uploaded files
-		const pdfUrl = UPLOAD_CONFIG.getUrlPath("papers", pdfFile.filename);
-		const imageUrl = imageFile ? UPLOAD_CONFIG.getUrlPath("papers", imageFile.filename) : null;
+		const pdfUrl = `/papers/${pdfFile.filename}`;
+		const imageUrl = imageFile ? `/papers/img/${imageFile.filename}` : null;
 
 		const paper = await Paper.create({
 			title,
@@ -339,10 +356,200 @@ const completePaper = async (req, res, next) => {
 	}
 };
 
+/**
+ * Update a paper record, allowing updates to fields and optional files.
+ */
+const updatePaper = async (req, res, next) => {
+	try {
+		const { paperId } = req.params;
+		const { title, detail, subject, year } = req.body;
+		const uploadedFiles = req.files;
+
+		const paper = await Paper.findByPk(paperId);
+		if (!paper) {
+			return res.status(404).json({
+				status: "fail",
+				message: "Paper not found",
+			});
+		}
+
+		if (title) paper.title = title.trim();
+		if (detail !== undefined) paper.detail = detail ? detail.trim() : null;
+
+		// Handle subject & year if updated
+		if (subject || year) {
+			let subjectRecord = null;
+			if (subject) {
+				subjectRecord = await Subject.findOne({ where: { subject_name: subject } });
+				if (!subjectRecord) {
+					subjectRecord = await Subject.create({ subject_name: subject });
+				}
+			} else {
+				const existingSubjectHasYear = await SubjectHasYear.findByPk(paper.subjects_has_years_id, {
+					include: [{ model: Subject, as: "subject" }]
+				});
+				subjectRecord = existingSubjectHasYear?.subject;
+			}
+
+			let yearRecord = null;
+			if (year) {
+				const normalizedYear = Number.parseInt(String(year).trim(), 10);
+				if (!Number.isInteger(normalizedYear)) {
+					return res.status(400).json({ status: "fail", message: "A valid year is required" });
+				}
+				yearRecord = await Year.findOne({ where: { years_name: normalizedYear } });
+				if (!yearRecord) {
+					yearRecord = await Year.create({ years_name: normalizedYear });
+				}
+			} else {
+				const existingSubjectHasYear = await SubjectHasYear.findByPk(paper.subjects_has_years_id, {
+					include: [{ model: Year, as: "year" }]
+				});
+				yearRecord = existingSubjectHasYear?.year;
+			}
+
+			if (subjectRecord && yearRecord) {
+				let subjectHasYear = await SubjectHasYear.findOne({
+					where: { subjects_id: subjectRecord.id, years_id: yearRecord.id }
+				});
+				if (!subjectHasYear) {
+					subjectHasYear = await SubjectHasYear.create({
+						subjects_id: subjectRecord.id,
+						years_id: yearRecord.id
+					});
+				}
+				paper.subjects_has_years_id = subjectHasYear.id;
+			}
+		}
+
+		// Handle files
+		if (uploadedFiles?.file?.[0]) {
+			paper.pdf_url = `/papers/${uploadedFiles.file[0].filename}`;
+		}
+		if (uploadedFiles?.image?.[0]) {
+			paper.image_url = `/papers/img/${uploadedFiles.image[0].filename}`;
+		}
+
+		await paper.save();
+
+		// Fetch updated paper details for response
+		const updatedPaper = await Paper.findByPk(paper.id, {
+			include: [
+				{
+					model: SubjectHasYear,
+					as: "subjectHasYear",
+					include: [
+						{ model: Subject, as: "subject", attributes: ["id", "subject_name"] },
+						{ model: Year, as: "year", attributes: ["id", "years_name"] }
+					]
+				}
+			]
+		});
+
+		// Calculate dynamic size
+		let size = null;
+		try {
+			const fs = require("fs");
+			const path = require("path");
+			const filePath = path.join(__dirname, "../../../uploads", updatedPaper.pdf_url);
+			if (fs.existsSync(filePath)) {
+				const stats = fs.statSync(filePath);
+				size = stats.size;
+			}
+		} catch (err) {
+			// ignore
+		}
+
+		return res.status(200).json({
+			status: "success",
+			message: "Paper updated successfully",
+			data: {
+				paper: {
+					id: updatedPaper.id,
+					title: updatedPaper.title,
+					detail: updatedPaper.detail,
+					image_url: updatedPaper.image_url,
+					pdf_url: updatedPaper.pdf_url,
+					subject: updatedPaper.subjectHasYear?.subject?.subject_name || "Other",
+					year: updatedPaper.subjectHasYear?.year?.years_name || "Unknown",
+					size
+				}
+			}
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+/**
+ * Add a new subject metadata to the database.
+ */
+const createSubject = async (req, res, next) => {
+	try {
+		const { subject_name } = req.body;
+		if (!subject_name || !subject_name.trim()) {
+			return res.status(400).json({
+				status: "fail",
+				message: "Subject name is required",
+			});
+		}
+
+		const [subject, created] = await Subject.findOrCreate({
+			where: { subject_name: subject_name.trim() }
+		});
+
+		return res.status(201).json({
+			status: "success",
+			message: created ? "Subject added successfully" : "Subject already exists",
+			data: subject,
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+/**
+ * Add a new year metadata to the database.
+ */
+const createYear = async (req, res, next) => {
+	try {
+		const { year } = req.body;
+		if (!year) {
+			return res.status(400).json({
+				status: "fail",
+				message: "Year is required",
+			});
+		}
+
+		const normalizedYear = Number.parseInt(String(year).trim(), 10);
+		if (!Number.isInteger(normalizedYear)) {
+			return res.status(400).json({
+				status: "fail",
+				message: "A valid integer year is required",
+			});
+		}
+
+		const [yearRecord, created] = await Year.findOrCreate({
+			where: { years_name: normalizedYear }
+		});
+
+		return res.status(201).json({
+			status: "success",
+			message: created ? "Year added successfully" : "Year already exists",
+			data: yearRecord,
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 module.exports = {
 	getPapers,
 	createPaper,
+	updatePaper,
 	downloadPaper,
 	bookmarkPaper,
 	completePaper,
+	createSubject,
+	createYear,
 };

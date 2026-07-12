@@ -336,6 +336,10 @@ export default function PastPapers() {
 
 													<h3 className="mb-2 text-headline-md font-headline-md text-on-surface group-hover:text-primary">{paper.title}</h3>
 
+													{paper.detail ? (
+														<p className="mb-3 text-sm leading-relaxed text-on-surface-variant line-clamp-2">{paper.detail}</p>
+													) : null}
+
 													<div className={`mb-6 flex items-center gap-2 ${statusColorClass}`}>
 														<Glyph icon={StatusIcon} size={16} className={statusColorClass} />
 														<span className="text-xs font-bold tracking-wider uppercase">{statusDetails.status}</span>
