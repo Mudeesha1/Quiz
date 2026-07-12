@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
-const { User, Grade, UserLevel, QuizAttempt, Quiz, UserBadge, Badge } = require("../../../models/associations");
+const { User, Grade, UserLevel, QuizAttempt, Quiz, UserBadge, Badge, Paper } = require("../../../models/associations");
 const { Op } = require("sequelize");
+const sequelize = require("../../../config/db.config");
 
 const buildProfileUrl = (fullName) => {
   const initials = fullName
@@ -332,10 +333,228 @@ const getUserPerformance = async (req, res, next) => {
   }
 };
 
+/**
+ * Get dashboard metrics, trends, activities, and tables for admin overview.
+ */
+const getDashboardStats = async (req, res, next) => {
+  try {
+    // 1. Total counts
+    const totalStudents = await User.count();
+    const totalQuizzes = await Quiz.count();
+    const totalPapers = await Paper.count();
+
+    // 2. Grade distribution
+    const grades = await Grade.findAll({
+      attributes: ["id", "grade_name"],
+      include: [
+        {
+          model: User,
+          as: "users",
+          attributes: ["id"],
+        }
+      ]
+    });
+    const gradeDistribution = grades.map(g => ({
+      grade: g.grade_name,
+      count: g.users?.length || 0,
+    }));
+
+    // 3. Quiz attempts performance range (0-49, 50-74, 75-100)
+    const attempts = await QuizAttempt.findAll({
+      attributes: ["score"],
+    });
+    let rangeLow = 0;   // 0-49
+    let rangeMedium = 0; // 50-74
+    let rangeHigh = 0;  // 75-100
+    attempts.forEach(a => {
+      if (a.score !== null) {
+        if (a.score < 50) rangeLow++;
+        else if (a.score < 75) rangeMedium++;
+        else rangeHigh++;
+      }
+    });
+    const performanceRanges = [
+      { name: "Under 50%", count: rangeLow, color: "#f43f5e" },
+      { name: "50% - 74%", count: rangeMedium, color: "#f59e0b" },
+      { name: "75% & Above", count: rangeHigh, color: "#10b981" },
+    ];
+
+    // 4. Monthly Registrations (Last 6 Months)
+    const allUsers = await User.findAll({
+      attributes: ["joined_at"],
+      order: [["joined_at", "ASC"]],
+    });
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const registrationCounts = {};
+    
+    // Initialize last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      registrationCounts[key] = 0;
+    }
+
+    allUsers.forEach(u => {
+      if (u.joined_at) {
+        const d = new Date(u.joined_at);
+        const key = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+        if (registrationCounts[key] !== undefined) {
+          registrationCounts[key]++;
+        }
+      }
+    });
+
+    const monthlyRegistrations = Object.entries(registrationCounts).map(([month, count]) => ({
+      month,
+      count,
+    }));
+
+    // 5. Popular Quizzes (Top 5 by attempt count)
+    const quizStats = await QuizAttempt.findAll({
+      attributes: [
+        "quiz_id",
+        [sequelize.fn("COUNT", sequelize.col("quiz_attempts.id")), "attemptCount"]
+      ],
+      group: ["quiz_id"],
+      include: [
+        {
+          model: Quiz,
+          as: "quiz",
+          attributes: ["quiz_name"],
+        }
+      ],
+      order: [[sequelize.literal("attemptCount"), "DESC"]],
+      limit: 5,
+    });
+
+    const popularQuizzes = quizStats.map(qs => ({
+      quiz_name: qs.quiz?.quiz_name || "Unknown Quiz",
+      attempts: parseInt(qs.dataValues.attemptCount) || 0,
+    }));
+
+    // 6. Recent student activity
+    const recentAttempts = await QuizAttempt.findAll({
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["fullname"],
+          include: [
+            {
+              model: Grade,
+              as: "grade",
+              attributes: ["grade_name"],
+            }
+          ]
+        },
+        {
+          model: Quiz,
+          as: "quiz",
+          attributes: ["quiz_name"],
+        }
+      ],
+      order: [["started_at", "DESC"]],
+      limit: 30,
+    });
+
+    const recentActivity = recentAttempts.map(ra => ({
+      id: ra.id,
+      name: ra.user?.fullname || "Anonymous",
+      grade: ra.user?.grade?.grade_name || "N/A",
+      quiz: ra.quiz?.quiz_name || "Unknown Quiz",
+      score: ra.score !== null ? `${Math.round(ra.score)}%` : "N/A",
+      date: ra.completed_at || ra.started_at,
+    }));
+
+    // 7. Top Performing Students (Top 5 by XP)
+    const topUsers = await User.findAll({
+      attributes: ["id", "fullname", "school_name", "current_xp"],
+      include: [
+        {
+          model: UserLevel,
+          as: "currentLevel",
+          attributes: ["level_name"],
+        },
+        {
+          model: Grade,
+          as: "grade",
+          attributes: ["grade_name"],
+        }
+      ],
+      order: [["current_xp", "DESC"]],
+      limit: 5,
+    });
+
+    const topPerformers = topUsers.map(tu => ({
+      id: tu.id,
+      fullname: tu.fullname,
+      school_name: tu.school_name || "N/A",
+      xp: tu.current_xp,
+      level: tu.currentLevel?.level_name || "Starter",
+      grade: tu.grade?.grade_name || "N/A",
+    }));
+
+    // 8. Quiz Attempts Trend (Last 6 Months)
+    const allAttempts = await QuizAttempt.findAll({
+      attributes: ["started_at", "completed_at"],
+    });
+    const attemptsCounts = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      attemptsCounts[key] = 0;
+    }
+    allAttempts.forEach(a => {
+      const dateVal = a.completed_at || a.started_at;
+      if (dateVal) {
+        const d = new Date(dateVal);
+        const key = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+        if (attemptsCounts[key] !== undefined) {
+          attemptsCounts[key]++;
+        }
+      }
+    });
+    const attemptsTrend = Object.entries(attemptsCounts).map(([month, count]) => ({
+      month,
+      count,
+    }));
+
+    // 9. User Account Status Split
+    const activeAccounts = await User.count({ where: { status: "Active" } });
+    const inactiveAccounts = await User.count({ where: { status: "Inactive" } });
+    const accountStatus = {
+      active: activeAccounts,
+      inactive: inactiveAccounts,
+    };
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        totalStudents,
+        totalQuizzes,
+        totalPapers,
+        gradeDistribution,
+        performanceRanges,
+        monthlyRegistrations,
+        popularQuizzes,
+        recentActivity,
+        topPerformers,
+        attemptsTrend,
+        accountStatus,
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllUsers,
   createUser,
   updateUser,
   deleteUser,
   getUserPerformance,
+  getDashboardStats,
 };
