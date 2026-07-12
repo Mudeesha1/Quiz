@@ -1,6 +1,6 @@
 const express = require("express");
 const { loginAdmin, registerAdmin } = require("./controllers/adminAuth.controller");
-const { getAllUsers, createUser, updateUser, deleteUser, getUserPerformance } = require("./controllers/adminUser.controller");
+const { getAllUsers, createUser, updateUser, deleteUser, getUserPerformance, getDashboardStats } = require("./controllers/adminUser.controller");
 const { requireAdmin } = require("../../middleware/auth");
 const { uploadSingleFile } = require("../../middleware/fileUpload");
 
@@ -24,5 +24,6 @@ adminRoutes.post("/users", requireAdmin, uploadSingleFile("profiles"), createUse
 adminRoutes.put("/users/:userId", requireAdmin, uploadSingleFile("profiles"), updateUser);
 adminRoutes.delete("/users/:userId", requireAdmin, deleteUser);
 adminRoutes.get("/users/:userId/performance", requireAdmin, getUserPerformance);
+adminRoutes.get("/dashboard-stats", requireAdmin, getDashboardStats);
 
 module.exports = adminRoutes;
