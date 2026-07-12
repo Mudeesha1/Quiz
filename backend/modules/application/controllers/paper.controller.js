@@ -86,6 +86,7 @@ const getPapers = async (req, res, next) => {
 				pdf_url: paper.pdf_url,
 				subject: paper.subjectHasYear?.subject?.subject_name || "Other",
 				year: paper.subjectHasYear?.year?.years_name || "Unknown",
+				created_at: paper.created_at,
 				isDownloaded,
 				isCompleted,
 				isBookmarked,
@@ -472,6 +473,7 @@ const updatePaper = async (req, res, next) => {
 					pdf_url: updatedPaper.pdf_url,
 					subject: updatedPaper.subjectHasYear?.subject?.subject_name || "Other",
 					year: updatedPaper.subjectHasYear?.year?.years_name || "Unknown",
+					created_at: updatedPaper.created_at,
 					size
 				}
 			}
