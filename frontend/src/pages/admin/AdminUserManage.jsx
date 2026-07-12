@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   Ban,
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 export default function AdminUserManage() {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
@@ -107,7 +109,10 @@ export default function AdminUserManage() {
   // Fetch Users and Grades
   const loadData = async () => {
     const session = getAuthSession();
-    if (!session?.tokens?.accessToken) return;
+    if (!session?.tokens?.accessToken) {
+      navigate('/admin/login');
+      return;
+    }
 
     setIsLoading(true);
     try {
