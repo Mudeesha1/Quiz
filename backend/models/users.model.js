@@ -46,6 +46,11 @@ const User = sequelize.define(
 			type: DataTypes.TEXT,
 			allowNull: true,
 		},
+		status: {
+			type: DataTypes.STRING(20),
+			allowNull: false,
+			defaultValue: "Active",
+		},
 		grade_id: {
 			type: DataTypes.INTEGER,
 			allowNull: false,

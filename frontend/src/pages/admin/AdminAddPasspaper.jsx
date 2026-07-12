@@ -430,6 +430,7 @@ export default function AdminAddPasspaper() {
           icon: BookOpen,
           image_url: createdPaper?.image_url,
           pdf_url: createdPaper?.pdf_url,
+          created_at: createdPaper?.created_at || new Date().toISOString(),
         };
         uploadedPapers.push(newPaper);
       }
@@ -511,6 +512,7 @@ export default function AdminAddPasspaper() {
         icon: BookOpen,
         image_url: savedPaper?.image_url || editingPaper?.image_url,
         pdf_url: savedPaper?.pdf_url || editingPaper?.pdf_url,
+        created_at: savedPaper?.created_at || editingPaper?.created_at || new Date().toISOString(),
       };
 
       // Close modal immediately
@@ -707,20 +709,17 @@ export default function AdminAddPasspaper() {
                   <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 </label>
 
-                <label className="relative block">
-                  <input
+                <label className="relative">
+                  <select
                     value={selectedYear}
                     onChange={(event) => setSelectedYear(event.target.value)}
-                    placeholder="Filter year"
-                    list="year-filter-options"
-                    className="w-full rounded-full border border-slate-200 bg-slate-50 py-3 pl-4 pr-10 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary focus:bg-white"
-                  />
-                  <datalist id="year-filter-options">
-                    <option value="All Years" />
+                    className="appearance-none rounded-full border border-slate-200 bg-slate-50 py-3 pl-4 pr-10 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary focus:bg-white"
+                  >
+                    <option value="All Years">All Years</option>
                     {availableYears.map((year) => (
-                      <option key={year} value={year} />
+                      <option key={year} value={year}>{year}</option>
                     ))}
-                  </datalist>
+                  </select>
                   <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 </label>
               </div>
