@@ -46,6 +46,21 @@ const createStorage = (uploadType) => {
 const createFileFilter = (uploadType) => {
 	return (req, file, cb) => {
 		try {
+			if (uploadType === "papers") {
+				if (file.fieldname === "file") {
+					if (file.mimetype === "application/pdf") {
+						return cb(null, true);
+					}
+					return cb(new Error("Invalid file type. Only PDF is allowed for paper file."));
+				} else if (file.fieldname === "image") {
+					const allowedImageMimes = ["image/jpeg", "image/png", "image/webp"];
+					if (allowedImageMimes.includes(file.mimetype)) {
+						return cb(null, true);
+					}
+					return cb(new Error("Invalid file type. Only JPEG, PNG, and WEBP are allowed for cover image."));
+				}
+			}
+
 			const configKey = getConfigKey(uploadType);
 			const allowedMimes = UPLOAD_CONFIG.ALLOWED_MIME_TYPES[configKey];
 
@@ -62,6 +77,35 @@ const createFileFilter = (uploadType) => {
 			cb(error);
 		}
 	};
+};
+
+/**
+ * Custom storage for paper uploads
+ */
+const createPaperStorage = () => {
+	const papersDir = path.join(__dirname, "../uploads/papers");
+	const imagesDir = path.join(papersDir, "img");
+
+	// Ensure directories exist
+	if (!fs.existsSync(papersDir)) {
+		fs.mkdirSync(papersDir, { recursive: true });
+	}
+	if (!fs.existsSync(imagesDir)) {
+		fs.mkdirSync(imagesDir, { recursive: true });
+	}
+
+	return multer.diskStorage({
+		destination: (req, file, cb) => {
+			if (file.fieldname === "image") {
+				cb(null, imagesDir);
+			} else {
+				cb(null, papersDir);
+			}
+		},
+		filename: (req, file, cb) => {
+			cb(null, file.originalname);
+		},
+	});
 };
 
 /**
@@ -110,7 +154,7 @@ const uploadMultipleFiles = (uploadType) => {
 			throw new Error(`Unknown upload type: ${uploadType}`);
 		}
 
-		const storage = createStorage(uploadType);
+		const storage = uploadType === "papers" ? createPaperStorage() : createStorage(uploadType);
 		const fileFilter = createFileFilter(uploadType);
 
 		return multer({
