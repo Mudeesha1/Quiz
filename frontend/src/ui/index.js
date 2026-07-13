@@ -12,3 +12,5 @@ export { Toast, ToastContainer, useToast } from './Toast';
 export { Badge } from './Badge';
 export { StudentHeader, StudentSidebar } from './StudentShell';
 export { AdminHeader, AdminSidebar } from './AdminShell';
+export { default as ErrorBoundary } from './ErrorBoundary';
+
