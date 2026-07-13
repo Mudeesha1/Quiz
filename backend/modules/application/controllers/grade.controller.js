@@ -162,7 +162,7 @@ const getLeaderboard = async (req, res, next) => {
       rankedList.sort((a, b) => b.xp - a.xp);
     }
 
-    // Assign rank positions
+  // Assign rank positions
     const finalizedList = rankedList.map((item, index) => ({
       ...item,
       rank: index + 1,
@@ -177,9 +177,19 @@ const getLeaderboard = async (req, res, next) => {
   }
 };
 
+const getSubjects = async (req, res, next) => {
+  try {
+    const subjects = await Subject.findAll({ order: [["subject_name", "ASC"]] });
+    return res.status(200).json({ status: "success", data: subjects });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getGrades,
   getSubjectsByGrade,
   getTopRankedUsers,
   getLeaderboard,
+  getSubjects,
 };
