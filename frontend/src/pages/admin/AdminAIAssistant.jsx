@@ -49,9 +49,13 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 const GRADE_OPTIONS = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11'];
 const SUBJECT_OPTIONS = ['Mathematics', 'Science', 'Sinhala', 'Environment', 'English', 'History'];
 const AI_MODELS = [
-  { id: 'poolside/laguna-xs-2.1:free', name: 'Laguna XS 2.1 (Free)' },
-  { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B IT (Free)' },
-  { id: 'poolside/laguna-m.1:free', name: 'Laguna M.1 (Free)' },
+  { id: 'tencent/hy3:free', name: 'Tencent HY3' },
+  { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B IT' },
+  { id: 'poolside/laguna-m.1:free', name: 'Laguna M.1' },
+  { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'NVIDIA Nemotron 3' },
+  { id: 'openai/gpt-oss-120b:free', name: 'GPT-OSS-120B' },
+  { id: 'google/lyria-3-clip-preview', name: 'Google Lyria 3' },
+  { id: 'poolside/laguna-xs-2.1:free', name: 'Laguna XS 2.1' },
 ];
 
 export default function AdminAIAssistant() {
