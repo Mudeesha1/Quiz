@@ -32,6 +32,11 @@ const Question = sequelize.define(
 			type: DataTypes.INTEGER,
 			allowNull: false,
 		},
+		hint: {
+			type: DataTypes.TEXT,
+			allowNull: true,
+			defaultValue: null,
+		},
 		created_at: {
 			type: DataTypes.DATE,
 			allowNull: false,

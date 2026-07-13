@@ -33,6 +33,12 @@ const Quiz = sequelize.define(
 			allowNull: true,
 			comment: "Time limit in seconds",
 		},
+		questions_to_show: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+			defaultValue: null,
+			comment: "Number of questions to show to students",
+		},
 		created_at: {
 			type: DataTypes.DATE,
 			allowNull: false,

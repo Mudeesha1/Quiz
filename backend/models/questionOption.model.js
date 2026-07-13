@@ -33,6 +33,11 @@ const QuestionOption = sequelize.define(
 			type: DataTypes.INTEGER,
 			allowNull: false,
 		},
+		explanation: {
+			type: DataTypes.TEXT,
+			allowNull: true,
+			defaultValue: null,
+		},
 	},
 	{
 		tableName: "question_options",

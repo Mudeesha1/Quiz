@@ -37,6 +37,10 @@ const Admin = sequelize.define(
 			type: DataTypes.TEXT,
 			allowNull: true,
 		},
+		openrouter_key: {
+			type: DataTypes.TEXT,
+			allowNull: true,
+		},
 	},
 	{
 		tableName: "admins",
