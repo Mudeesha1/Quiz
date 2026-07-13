@@ -234,6 +234,44 @@ async function updateUserReview(data) {
   return response.json();
 }
 
+function isAdmin() {
+  const session = getAuthSession();
+  if (!session?.tokens?.accessToken) return false;
+  try {
+    const base64Url = session.tokens.accessToken.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      window.atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    return payload.accountType === 'admin';
+  } catch (e) {
+    return !!session.user?.admin_name;
+  }
+}
+
+function isUser() {
+  const session = getAuthSession();
+  if (!session?.tokens?.accessToken) return false;
+  try {
+    const base64Url = session.tokens.accessToken.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      window.atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    return payload.accountType === 'user';
+  } catch (e) {
+    return !!session.user?.fullname;
+  }
+}
+
 export {
   registerUser,
   loginUser,
@@ -248,4 +286,6 @@ export {
   updateUserProfile,
   updateAuthUser,
   updateUserReview,
+  isAdmin,
+  isUser,
 };
