@@ -32,6 +32,7 @@ const getAllQuizzes = async (req, res, next) => {
       title: q.quiz_name,
       description: q.description,
       time_limit: q.time_limit,
+      questions_to_show: q.questions_to_show,
       grade: q.gradeHasSubject?.grade?.grade_name || "Unknown",
       subject: q.gradeHasSubject?.subject?.subject_name || "Other",
       questionsCount: q.questions?.length || 0,
@@ -42,10 +43,12 @@ const getAllQuizzes = async (req, res, next) => {
         question_type: question.question_type,
         xp_reward: question.xp_reward,
         image_url: question.image_url,
+        hint: question.hint,
         options: question.options?.map(opt => ({
           id: opt.id,
           option_text: opt.option_text,
-          is_correct: opt.is_correct
+          is_correct: opt.is_correct,
+          explanation: opt.explanation
         }))
       }))
     }));
@@ -73,7 +76,7 @@ const getAllQuizzes = async (req, res, next) => {
 const createQuiz = async (req, res, next) => {
   const t = await sequelize.transaction();
   try {
-    const { title, description, time_limit, grade, subject, questions } = req.body || {};
+    const { title, description, time_limit, questions_to_show, grade, subject, questions } = req.body || {};
 
     if (!title || !grade || !subject) {
       return res.status(400).json({
@@ -110,6 +113,7 @@ const createQuiz = async (req, res, next) => {
       quiz_name: title.trim(),
       description: description?.trim() || "",
       time_limit: time_limit ? parseInt(time_limit) : 600,
+      questions_to_show: questions_to_show ? parseInt(questions_to_show) : null,
       grade_has_subjects_id: ghs.id,
     }, { transaction: t });
 
@@ -123,6 +127,7 @@ const createQuiz = async (req, res, next) => {
           question_type: q.question_type || "single",
           xp_reward: q.xp_reward ? parseInt(q.xp_reward) : 2,
           image_url: q.image_url || null,
+          hint: q.hint?.trim() || null,
           question_order: i + 1,
         }, { transaction: t });
 
@@ -134,6 +139,7 @@ const createQuiz = async (req, res, next) => {
               question_id: question.id,
               option_text: opt.option_text.trim(),
               is_correct: opt.is_correct || false,
+              explanation: opt.explanation?.trim() || null,
               option_order: j + 1,
             }, { transaction: t });
           }
@@ -161,7 +167,7 @@ const updateQuiz = async (req, res, next) => {
   const t = await sequelize.transaction();
   try {
     const { quizId } = req.params;
-    const { title, description, time_limit, grade, subject, questions } = req.body || {};
+    const { title, description, time_limit, questions_to_show, grade, subject, questions } = req.body || {};
 
     const quiz = await Quiz.findByPk(quizId);
     if (!quiz) {
@@ -198,6 +204,7 @@ const updateQuiz = async (req, res, next) => {
     if (title !== undefined) quiz.quiz_name = title.trim();
     if (description !== undefined) quiz.description = description.trim();
     if (time_limit !== undefined) quiz.time_limit = parseInt(time_limit);
+    if (questions_to_show !== undefined) quiz.questions_to_show = questions_to_show ? parseInt(questions_to_show) : null;
     quiz.grade_has_subjects_id = ghs.id;
     await quiz.save({ transaction: t });
 
@@ -218,6 +225,7 @@ const updateQuiz = async (req, res, next) => {
           question_type: q.question_type || "single",
           xp_reward: q.xp_reward ? parseInt(q.xp_reward) : 2,
           image_url: q.image_url || null,
+          hint: q.hint?.trim() || null,
           question_order: i + 1,
         }, { transaction: t });
 
@@ -229,6 +237,7 @@ const updateQuiz = async (req, res, next) => {
               question_id: question.id,
               option_text: opt.option_text.trim(),
               is_correct: opt.is_correct || false,
+              explanation: opt.explanation?.trim() || null,
               option_order: j + 1,
             }, { transaction: t });
           }
