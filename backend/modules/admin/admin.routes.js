@@ -2,6 +2,8 @@ const express = require("express");
 const { loginAdmin, registerAdmin } = require("./controllers/adminAuth.controller");
 const { getAllUsers, createUser, updateUser, deleteUser, getUserPerformance, getDashboardStats } = require("./controllers/adminUser.controller");
 const { getAllQuizzes, createQuiz, updateQuiz, deleteQuiz } = require("./controllers/adminQuiz.controller");
+const { getAdminProfile, updateAdminProfile, changeAdminPassword, getOpenRouterKey, updateOpenRouterKey } = require("./controllers/adminSettings.controller");
+const { generateQuizFromAI, chatWithAI } = require("./controllers/adminAI.controller");
 const { requireAdmin } = require("../../middleware/auth");
 const { uploadSingleFile, UPLOAD_CONFIG } = require("../../middleware/fileUpload");
 
@@ -18,6 +20,15 @@ adminRoutes.get("/health", (req, res) => {
 
 adminRoutes.post("/login", loginAdmin);
 adminRoutes.post("/register", registerAdmin);
+
+// Admin Settings Routes
+adminRoutes.get("/settings/profile", requireAdmin, getAdminProfile);
+adminRoutes.put("/settings/profile", requireAdmin, uploadSingleFile("profiles"), updateAdminProfile);
+adminRoutes.put("/settings/change-password", requireAdmin, changeAdminPassword);
+adminRoutes.get("/settings/openrouter-key", requireAdmin, getOpenRouterKey);
+adminRoutes.put("/settings/openrouter-key", requireAdmin, updateOpenRouterKey);
+adminRoutes.post("/ai-assistant/generate-quiz", requireAdmin, generateQuizFromAI);
+adminRoutes.post("/ai-assistant/chat", requireAdmin, chatWithAI);
 
 // Protected Admin Routes
 adminRoutes.get("/users", requireAdmin, getAllUsers);

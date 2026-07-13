@@ -18,7 +18,7 @@ const LEADERBOARD = [
 	{ rank: 13, name: 'Riley W.', points: '1,135 pts', avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=RileyW&backgroundColor=c0aede' },
 ];
 
-export default function QuizResult({ data: propData } = {}) {
+export default function QuizResult({ data: propData, onPlayAgain, onReview } = {}) {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const data = propData ?? ((location && location.state) ? location.state : RESULTS);
@@ -269,7 +269,12 @@ export default function QuizResult({ data: propData } = {}) {
 				</div>
 
 				<div className="qr-actions">
-					<button className="qr-btn-play" onClick={() => navigate('/quizzes')}>Play Again</button>
+					<button className="qr-btn-play" onClick={onPlayAgain || (() => navigate('/quizzes'))}>Play Again</button>
+					{onReview && (
+						<button className="qr-btn-back" style={{ borderColor: '#0d9e74', color: '#0d9e74' }} onClick={onReview}>
+							Review Answers
+						</button>
+					)}
 					<button className="qr-btn-back" onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
 				</div>
 			</div>

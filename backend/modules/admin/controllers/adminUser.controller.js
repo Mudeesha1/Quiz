@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
-const { User, Grade, UserLevel, QuizAttempt, Quiz, UserBadge, Badge, Paper } = require("../../../models/associations");
-const { Op } = require("sequelize");
+const { User, Grade, UserLevel, QuizAttempt, Quiz, UserBadge, Badge, Paper, GradeHasSubject, Subject } = require("../../../models/associations");
+const { Op, QueryTypes } = require("sequelize");
 const sequelize = require("../../../config/db.config");
 
 const buildProfileUrl = (fullName) => {
@@ -359,24 +359,34 @@ const getDashboardStats = async (req, res, next) => {
       count: g.users?.length || 0,
     }));
 
-    // 3. Quiz attempts performance range (0-49, 50-74, 75-100)
+    // 3. Quiz attempts performance range (100%, 90-99%, 75-89%, 50-74%, 40-49%, Under 40%)
     const attempts = await QuizAttempt.findAll({
       attributes: ["score"],
     });
-    let rangeLow = 0;   // 0-49
-    let rangeMedium = 0; // 50-74
-    let rangeHigh = 0;  // 75-100
+    let range100 = 0;
+    let range90 = 0;
+    let range75 = 0;
+    let range50 = 0;
+    let range40 = 0;
+    let rangeUnder40 = 0;
+    
     attempts.forEach(a => {
       if (a.score !== null) {
-        if (a.score < 50) rangeLow++;
-        else if (a.score < 75) rangeMedium++;
-        else rangeHigh++;
+        if (a.score === 100) range100++;
+        else if (a.score >= 90) range90++;
+        else if (a.score >= 75) range75++;
+        else if (a.score >= 50) range50++;
+        else if (a.score >= 40) range40++;
+        else rangeUnder40++;
       }
     });
     const performanceRanges = [
-      { name: "Under 50%", count: rangeLow, color: "#f43f5e" },
-      { name: "50% - 74%", count: rangeMedium, color: "#f59e0b" },
-      { name: "75% & Above", count: rangeHigh, color: "#10b981" },
+      { name: "100%", count: range100, color: "#10b981" },
+      { name: "90% - 99%", count: range90, color: "#34d399" },
+      { name: "75% - 89%", count: range75, color: "#60a5fa" },
+      { name: "50% - 74%", count: range50, color: "#fbbf24" },
+      { name: "40% - 49%", count: range40, color: "#f97316" },
+      { name: "Under 40%", count: rangeUnder40, color: "#ef4444" },
     ];
 
     // 4. Monthly Registrations (Last 6 Months)
@@ -529,6 +539,83 @@ const getDashboardStats = async (req, res, next) => {
       inactive: inactiveAccounts,
     };
 
+    // 10. Trending Subjects (Quiz attempts per subject) - using raw query for reliability
+    let trendingSubjects = [];
+    try {
+      const subjectRows = await sequelize.query(
+        `SELECT s.subject_name AS subject, COUNT(qa.id) AS attempt_count
+         FROM quiz_attempts qa
+         INNER JOIN quizzes q ON qa.quiz_id = q.id
+         INNER JOIN grade_has_subjects ghs ON q.grade_has_subjects_id = ghs.id
+         INNER JOIN subjects s ON ghs.subjects_id = s.id
+         GROUP BY s.id, s.subject_name
+         ORDER BY attempt_count DESC`,
+        { type: QueryTypes.SELECT }
+      );
+
+      // Also get all subjects with 0 attempts
+      const allSubjectRows = await sequelize.query(
+        `SELECT subject_name AS subject FROM subjects`,
+        { type: QueryTypes.SELECT }
+      );
+
+      const attemptMap = {};
+      subjectRows.forEach(r => {
+        attemptMap[r.subject] = parseInt(r.attempt_count) || 0;
+      });
+      allSubjectRows.forEach(r => {
+        if (!(r.subject in attemptMap)) {
+          attemptMap[r.subject] = 0;
+        }
+      });
+
+      trendingSubjects = Object.entries(attemptMap)
+        .map(([subject, count]) => ({ subject, count }))
+        .sort((a, b) => b.count - a.count);
+    } catch (subjectErr) {
+      console.error("Trending subjects query failed:", subjectErr.message);
+      trendingSubjects = [];
+    }
+
+    // 11. Quiz overview stats (total questions, completed attempts, avg score)
+    let quizOverview = { totalQuestions: 0, completedAttempts: 0, avgScore: 0 };
+    try {
+      const [overviewResult] = await sequelize.query(
+        `SELECT 
+           (SELECT COUNT(*) FROM questions) AS total_questions,
+           COUNT(CASE WHEN is_completed = 1 THEN 1 END) AS completed_attempts,
+           ROUND(AVG(CASE WHEN score IS NOT NULL THEN score END), 1) AS avg_score
+         FROM quiz_attempts`,
+        { type: QueryTypes.SELECT }
+      );
+      quizOverview = {
+        totalQuestions: parseInt(overviewResult.total_questions) || 0,
+        completedAttempts: parseInt(overviewResult.completed_attempts) || 0,
+        avgScore: parseFloat(overviewResult.avg_score) || 0,
+      };
+    } catch (overviewErr) {
+      console.error("Quiz overview query failed:", overviewErr.message);
+    }
+
+    // 12. Peak Activity Hours (attempts per hour of day)
+    let peakHours = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
+    try {
+      const hourRows = await sequelize.query(
+        `SELECT HOUR(started_at) AS hour, COUNT(*) AS count
+         FROM quiz_attempts
+         WHERE started_at IS NOT NULL
+         GROUP BY HOUR(started_at)
+         ORDER BY hour ASC`,
+        { type: QueryTypes.SELECT }
+      );
+      hourRows.forEach(r => {
+        const h = parseInt(r.hour);
+        if (h >= 0 && h <= 23) peakHours[h].count = parseInt(r.count) || 0;
+      });
+    } catch (peakErr) {
+      console.error("Peak hours query failed:", peakErr.message);
+    }
+
     return res.status(200).json({
       status: "success",
       data: {
@@ -543,6 +630,9 @@ const getDashboardStats = async (req, res, next) => {
         topPerformers,
         attemptsTrend,
         accountStatus,
+        trendingSubjects,
+        quizOverview,
+        peakHours,
       }
     });
   } catch (error) {

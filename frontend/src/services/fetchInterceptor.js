@@ -102,6 +102,21 @@ window.fetch = async function (resource, config) {
     window.location.href = '/403';
   }
 
+  // Handle Not Found (404) errors by redirecting to custom /404 page
+  if (response.status === 404) {
+    window.location.href = '/404';
+  }
+
+  // Handle Method Not Allowed (405) errors by redirecting to custom /405 page
+  if (response.status === 405) {
+    window.location.href = '/405';
+  }
+
+  // Handle Internal Server Error (500) errors by redirecting to custom /500 page
+  if (response.status === 500) {
+    window.location.href = '/500';
+  }
+
   return response;
 };
 

@@ -29,6 +29,7 @@ const NAV_ITEMS = [
   { label: 'Quizzes', icon: FileText, to: '/admin/quizzes' },
   { label: 'Past Papers', icon: ShieldCheck, to: '/admin/past-papers' },
   { label: 'Users', icon: Users, to: '/admin/users', active: true },
+  { label: 'AI Assistant', icon: Sparkles, to: '/admin/ai-assistant' },
   { label: 'Settings', icon: Settings, to: '/admin/settings' },
 ];
 
@@ -240,7 +241,23 @@ export default function AdminUserManage() {
 
       setIsModalOpen(false);
       toast.success(editingUser ? 'User details updated successfully.' : 'New user created successfully.');
-      loadData();
+
+      // Update local state immediately from the API response (avoids stale profile_url)
+      const savedUser = data?.data?.user;
+      if (savedUser) {
+        if (editingUser) {
+          // Replace the matching user in state with the full updated record
+          setUsers((current) =>
+            current.map((u) => (u.id === savedUser.id ? { ...u, ...savedUser } : u))
+          );
+        } else {
+          // Prepend new user
+          setUsers((current) => [savedUser, ...current]);
+        }
+      } else {
+        // Fallback: full re-fetch if API didn't return the user object
+        loadData();
+      }
     } catch (err) {
       toast.error(err.message || 'Error occurred while saving the user.');
     } finally {
@@ -299,7 +316,10 @@ export default function AdminUserManage() {
     return `https://api.dicebear.com/9.x/initials/svg?seed=${initials}&background=%23ffffff`;
   };
 
-  const visibleUsers = useMemo(() => {
+  const USERS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const matchesSearch = `${user.fullname} ${user.email} ${user.grade} ${user.school_name || ''}`
         .toLowerCase()
@@ -308,6 +328,17 @@ export default function AdminUserManage() {
       return matchesSearch && matchesStatus;
     });
   }, [users, searchTerm, selectedStatus]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const visibleUsers = useMemo(() => {
+    const start = (currentPage - 1) * USERS_PER_PAGE;
+    return filteredUsers.slice(start, start + USERS_PER_PAGE);
+  }, [filteredUsers, currentPage]);
 
   const activeCount = useMemo(() => users.filter((u) => u.status === 'Active').length, [users]);
   const inactiveCount = useMemo(() => users.filter((u) => u.status === 'Inactive').length, [users]);
@@ -499,14 +530,49 @@ export default function AdminUserManage() {
                 ) : null}
 
                 <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 md:flex-row md:items-center md:justify-between">
-                  <span className="text-sm text-slate-500">Showing {visibleUsers.length} of {users.length} students</span>
-                  <div className="flex gap-2">
-                    <button className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100" disabled>
+                  <span className="text-sm text-slate-500">
+                    Showing {filteredUsers.length === 0 ? 0 : (currentPage - 1) * USERS_PER_PAGE + 1}–{Math.min(currentPage * USERS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} students
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
                       Previous
                     </button>
-                    <button className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100" disabled>
-                      Next
-                      <ArrowRight size={16} className="ml-2 inline" />
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                      .reduce((acc, page, idx, arr) => {
+                        if (idx > 0 && page - arr[idx - 1] > 1) {
+                          acc.push('...');
+                        }
+                        acc.push(page);
+                        return acc;
+                      }, [])
+                      .map((item, idx) =>
+                        item === '...' ? (
+                          <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-sm">…</span>
+                        ) : (
+                          <button
+                            key={item}
+                            onClick={() => setCurrentPage(item)}
+                            className={`h-9 w-9 rounded-full text-sm font-bold transition cursor-pointer ${
+                              currentPage === item
+                                ? 'bg-primary text-white shadow-sm'
+                                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        )
+                      )}
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Next <ArrowRight size={16} className="ml-1 inline" />
                     </button>
                   </div>
                 </div>

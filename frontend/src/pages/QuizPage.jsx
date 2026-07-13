@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clearAuthSession } from '../services/authService';
 import { getQuizzes } from '../services/appService';
@@ -98,14 +98,25 @@ export default function QuizPage() {
 		navigate('/quiz-card', { state: { quizId } });
 	};
 
-	const visibleQuests = quizzes.filter((quest) => {
+	const QUIZZES_PER_PAGE = 9;
+	const [currentPage, setCurrentPage] = useState(1);
+
+	const visibleQuests = useMemo(() => quizzes.filter((quest) => {
 		const matchesSearch = `${quest.subject} ${quest.title} ${quest.description || ''} ${quest.reward}`.toLowerCase().includes(searchTerm.toLowerCase());
 		const matchesGrade = selectedGrade === 'All Grades' ? true : quest.grade === selectedGrade;
 		const matchesSubject = selectedSubject === 'All Subjects' ? true : quest.subject === selectedSubject;
 		const matchesTab = activeTab === 'available' ? quest.status !== 'completed' : quest.status === 'completed';
-
 		return matchesSearch && matchesGrade && matchesSubject && matchesTab;
-	});
+	}), [quizzes, searchTerm, selectedGrade, selectedSubject, activeTab]);
+
+	// Reset to page 1 whenever filters/tab change
+	useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedGrade, selectedSubject, activeTab]);
+
+	const totalPages = Math.max(1, Math.ceil(visibleQuests.length / QUIZZES_PER_PAGE));
+	const pagedQuests = useMemo(() => {
+		const start = (currentPage - 1) * QUIZZES_PER_PAGE;
+		return visibleQuests.slice(start, start + QUIZZES_PER_PAGE);
+	}, [visibleQuests, currentPage]);
 
 	return (
 		<div className="min-h-screen overflow-x-hidden bg-surface text-on-surface font-body-md">
@@ -234,8 +245,9 @@ export default function QuizPage() {
 							</CardContent>
 						</Card>
 					) : visibleQuests.length > 0 ? (
-						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-							{visibleQuests.map((quest) => {
+						<>
+							<div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+								{pagedQuests.map((quest) => {
 								return (
 									<Card key={`${quest.subject}-${quest.title}`} className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-outline-variant bg-surface-container-lowest shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
 										<CardContent className="flex flex-col h-full p-4">
@@ -265,7 +277,57 @@ export default function QuizPage() {
 									</Card>
 								);
 							})}
-						</div>
+							</div>
+
+							{/* Pagination */}
+							{totalPages > 1 && (
+								<div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between border-t-2 border-surface-container-highest pt-6 mt-2">
+									<span className="text-sm font-semibold text-on-surface-variant">
+										Showing {visibleQuests.length === 0 ? 0 : (currentPage - 1) * QUIZZES_PER_PAGE + 1}–{Math.min(currentPage * QUIZZES_PER_PAGE, visibleQuests.length)} of {visibleQuests.length} quests
+									</span>
+									<div className="flex items-center gap-2">
+										<button
+											onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+											disabled={currentPage === 1}
+											className="rounded-full border-2 border-outline-variant bg-surface-container-lowest px-4 py-2 text-sm font-bold text-on-surface-variant transition hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+										>
+											Prev
+										</button>
+										{Array.from({ length: totalPages }, (_, i) => i + 1)
+											.filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+											.reduce((acc, page, idx, arr) => {
+												if (idx > 0 && page - arr[idx - 1] > 1) acc.push('…');
+												acc.push(page);
+												return acc;
+											}, [])
+											.map((item, idx) =>
+												typeof item === 'string' ? (
+													<span key={`el-${idx}`} className="px-1 text-on-surface-variant text-sm">{item}</span>
+												) : (
+													<button
+														key={item}
+														onClick={() => setCurrentPage(item)}
+														className={`h-10 w-10 rounded-full text-sm font-bold transition cursor-pointer ${
+															currentPage === item
+																? 'bg-primary text-white shadow-[0px_4px_0px_0px_#2e23a8]'
+																: 'border-2 border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-primary hover:text-primary'
+														}`}
+													>
+														{item}
+													</button>
+												)
+											)}
+										<button
+											onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+											disabled={currentPage === totalPages}
+											className="rounded-full border-2 border-outline-variant bg-surface-container-lowest px-4 py-2 text-sm font-bold text-on-surface-variant transition hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+										>
+											Next
+										</button>
+									</div>
+								</div>
+							)}
+						</>
 					) : (
 						<Card className="rounded-[1.75rem] border-2 border-dashed border-outline-variant bg-surface-container-lowest shadow-sm">
 							<CardContent className="flex flex-col items-center justify-center py-16 text-center">

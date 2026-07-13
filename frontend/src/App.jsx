@@ -18,12 +18,14 @@ import AdminAddPasspaper from './pages/admin/AdminAddPasspaper';
 import AdminUserManage from './pages/admin/AdminUserManage';
 import AdminAddQuiz from './pages/admin/AdminAddQuiz';
 import AdminLogin from './pages/admin/AdminLogin';
+import AdminSettings from './pages/admin/AdminSettings';
+import AdminAIAssistant from './pages/admin/AdminAIAssistant';
 import Error405Page from './pages/errors/405error';
 import Error401Page from './pages/errors/401error';
 import Error404Page from './pages/errors/404error';
 import Error403Page from './pages/errors/403error';
 import Error500Page from './pages/errors/500error';
-import { getAuthSession } from './services/authService';
+import { getAuthSession, isAdmin, isUser } from './services/authService';
 import { Toast, useToast } from './ui/Toast';
 
 function ProtectedRoute({ children }) {
@@ -31,6 +33,24 @@ function ProtectedRoute({ children }) {
 
   if (!session?.tokens?.accessToken) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!isUser()) {
+    return <Navigate to="/403" replace />;
+  }
+
+  return children;
+}
+
+function AdminProtectedRoute({ children }) {
+  const session = getAuthSession();
+
+  if (!session?.tokens?.accessToken) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  if (!isAdmin()) {
+    return <Navigate to="/403" replace />;
   }
 
   return children;
@@ -58,6 +78,8 @@ function PageTitleManager() {
       '/admin/past-papers': 'Past Papers | Quiz Master',
       '/admin/users': 'Manage Users | Quiz Master',
       '/admin/quizzes': 'Manage Quizzes | Quiz Master',
+      '/admin/settings': 'Settings | Quiz Master',
+      '/admin/ai-assistant': 'AI Assistant | Quiz Master',
       '/403': 'Access Denied | Quiz Master',
     };
 
@@ -140,16 +162,61 @@ function App() {
           }
         />
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/past-papers" element={<AdminAddPasspaper />} />
-        <Route path="/admin/users" element={<AdminUserManage />} />
-        <Route path="/admin/quizzes" element={<AdminAddQuiz />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminProtectedRoute>
+              <AdminDashboard />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/past-papers"
+          element={
+            <AdminProtectedRoute>
+              <AdminAddPasspaper />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminProtectedRoute>
+              <AdminUserManage />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/quizzes"
+          element={
+            <AdminProtectedRoute>
+              <AdminAddQuiz />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <AdminProtectedRoute>
+              <AdminSettings />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/ai-assistant"
+          element={
+            <AdminProtectedRoute>
+              <AdminAIAssistant />
+            </AdminProtectedRoute>
+          }
+        />
         <Route path="/401" element={<Error401Page />} />
         <Route path="/403" element={<Error403Page />} />
         <Route path="/404" element={<Error404Page />} />
         <Route path="/405" element={<Error405Page />} />
         <Route path="/500" element={<Error500Page />} />
         <Route path="/demo" element={<ComponentLibraryDemo />} />
+        <Route path="*" element={<Error404Page />} />
       </Routes>
       <div className="fixed z-50 space-y-3 top-4 right-4">
         {toast.toasts.map((item) => (

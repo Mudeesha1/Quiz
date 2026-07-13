@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { label: 'Quizzes', icon: FileText, to: '/admin/quizzes' },
   { label: 'Past Papers', icon: ShieldCheck, to: '/admin/past-papers' },
   { label: 'Users', icon: Users, to: '/admin/users' },
+  { label: 'AI Assistant', icon: Sparkles, to: '/admin/ai-assistant' },
   { label: 'Settings', icon: Settings, to: '/admin/settings' },
 ];
 
@@ -223,14 +224,13 @@ export default function AdminDashboard() {
                         const maxRegCount = Math.max(...stats.monthlyRegistrations.map(r => r.count), 1);
                         const heightPercentage = (item.count / maxRegCount) * 80;
                         return (
-                          <div key={idx} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
-                            <div className="relative w-full flex justify-center">
-                              <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 transition bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow pointer-events-none whitespace-nowrap">
+                          <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full gap-2 group cursor-pointer">
+                            <div className="relative w-full flex items-end justify-center" style={{ height: `${Math.max(heightPercentage, 5)}%` }}>
+                              <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 transition bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-20">
                                 {item.count} users
                               </div>
                               <div
-                                className="w-full max-w-[20px] rounded-t-md bg-indigo-500 group-hover:bg-indigo-600 transition-all duration-500"
-                                style={{ height: `${Math.max(heightPercentage, 5)}%` }}
+                                className="w-full max-w-[20px] h-full rounded-t-md bg-indigo-500 group-hover:bg-indigo-600 transition-all duration-500"
                               />
                             </div>
                             <span className="text-[10px] font-bold text-slate-400 truncate w-full text-center">
@@ -275,10 +275,10 @@ export default function AdminDashboard() {
                           const totalAttempts = stats.performanceRanges.reduce((acc, r) => acc + r.count, 0) || 1;
                           const pct = totalAttempts > 0 ? (range.count / totalAttempts) * 100 : 0;
                           return (
-                            <div key={idx} className="flex flex-col p-2.5 rounded-2xl border border-slate-100 bg-slate-50/50">
+                            <div key={idx} className="flex flex-col p-2.5 rounded-md border border-slate-100 bg-slate-50/50">
                               <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 truncate">
                                 <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: range.color }} />
-                                {range.name.split(' ')[0]}
+                                {range.name}
                               </div>
                               <p className="mt-1 text-sm font-black text-slate-800">
                                 {range.count} <span className="text-[10px] font-normal text-slate-400">({Math.round(pct)}%)</span>
@@ -356,6 +356,90 @@ export default function AdminDashboard() {
                   </div>
                 </Card>
 
+                {/* Chart: Trending Subjects */}
+                <Card className="overflow-hidden rounded-3xl border border-surface-container-highest bg-surface-container-lowest p-6 shadow-soft">
+                  <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <PieChart size={18} className="text-emerald-500" /> Trending Subjects
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">Quiz attempts volume per Subject</p>
+                  
+                  {!stats.trendingSubjects || stats.trendingSubjects.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-12">No subject attempt data available.</p>
+                  ) : (
+                    <div className="mt-6 flex flex-col gap-4">
+                      {stats.trendingSubjects.map((item, idx) => {
+                        const maxCount = Math.max(...stats.trendingSubjects.map(s => s.count), 1);
+                        const percentage = (item.count / maxCount) * 100;
+                        return (
+                          <div key={idx} className="flex items-center gap-3">
+                            <span className="w-24 text-xs font-bold text-slate-600 truncate" title={item.subject}>
+                              {item.subject}
+                            </span>
+                            <div className="flex-1 h-3.5 rounded-full bg-slate-100 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="w-8 text-right text-xs font-black text-slate-800">{item.count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Card>
+
+                {/* Quiz Overview Card */}
+                <Card className="overflow-hidden rounded-3xl border border-surface-container-highest bg-surface-container-lowest p-6 shadow-soft flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                      <Sparkles size={18} className="text-amber-500" /> Quiz Overview
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">Overall quiz performance snapshot</p>
+                  </div>
+
+                  <div className="mt-6 flex flex-col gap-4">
+                    {/* Total Questions */}
+                    <div className="flex items-center justify-between rounded-lg bg-indigo-50 px-4 py-3 border border-indigo-100">
+                      <div>
+                        <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide">Total Questions</p>
+                        <p className="text-2xl font-black text-indigo-700 mt-0.5">
+                          {stats.quizOverview?.totalQuestions ?? 0}
+                        </p>
+                      </div>
+                      <div className="h-10 w-10 flex items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+                        <FileText size={18} />
+                      </div>
+                    </div>
+
+                    {/* Completed Attempts */}
+                    <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-4 py-3 border border-emerald-100">
+                      <div>
+                        <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Completed Attempts</p>
+                        <p className="text-2xl font-black text-emerald-700 mt-0.5">
+                          {stats.quizOverview?.completedAttempts ?? 0}
+                        </p>
+                      </div>
+                      <div className="h-10 w-10 flex items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                        <Award size={18} />
+                      </div>
+                    </div>
+
+                    {/* Average Score */}
+                    <div className="flex items-center justify-between rounded-lg bg-amber-50 px-4 py-3 border border-amber-100">
+                      <div>
+                        <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Avg. Score</p>
+                        <p className="text-2xl font-black text-amber-700 mt-0.5">
+                          {stats.quizOverview?.avgScore ?? 0}%
+                        </p>
+                      </div>
+                      <div className="h-10 w-10 flex items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                        <TrendingUp size={18} />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
                 {/* Chart 5: Attempts Volume Trend (SVG Area Line Chart) */}
                 <Card className="overflow-hidden rounded-3xl border border-surface-container-highest bg-surface-container-lowest p-6 shadow-soft lg:col-span-2">
                   <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
@@ -421,6 +505,94 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </Card>
+
+                {/* Peak Activity Hours Line Chart */}
+                <Card className="overflow-hidden rounded-3xl border border-surface-container-highest bg-surface-container-lowest p-6 shadow-soft">
+                  <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <Calendar size={18} className="text-violet-500" /> Peak Activity Hours
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">System usage by hour of day</p>
+
+                  {(() => {
+                    const data = stats.peakHours || [];
+                    const visible = data.filter(d => d.hour >= 6 && d.hour <= 23);
+                    const maxCount = Math.max(...visible.map(d => d.count), 1);
+                    const peakHour = visible.reduce((best, d) => d.count > best.count ? d : best, visible[0] || { hour: 0, count: 0 });
+
+                    if (visible.every(d => d.count === 0)) {
+                      return <p className="text-xs text-slate-400 text-center py-12">No activity data available yet.</p>;
+                    }
+
+                    const svgW = 300;
+                    const svgH = 130;
+                    const padX = 10;
+                    const padY = 20;
+                    const chartW = svgW - padX * 2;
+                    const chartH = svgH - padY * 2;
+
+                    const pts = visible.map((d, i) => ({
+                      x: padX + (i / (visible.length - 1)) * chartW,
+                      y: padY + chartH - (d.count / maxCount) * chartH,
+                      hour: d.hour,
+                      count: d.count,
+                      isPeak: d.hour === peakHour.hour,
+                    }));
+
+                    const formatHour = h => {
+                      if (h === 0) return '12am';
+                      if (h < 12) return `${h}am`;
+                      if (h === 12) return '12pm';
+                      return `${h - 12}pm`;
+                    };
+
+                    const linePath = pts.reduce((acc, p, i) => i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
+                    const areaPath = `${linePath} L ${pts[pts.length - 1].x} ${svgH - padY} L ${pts[0].x} ${svgH - padY} Z`;
+
+                    return (
+                      <div className="mt-4">
+                        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-violet-50 border border-violet-100 px-3 py-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
+                          <span className="text-[11px] font-bold text-violet-700">
+                            Peak: {formatHour(peakHour.hour)} — {peakHour.count} attempts
+                          </span>
+                        </div>
+
+                        <svg className="w-full h-auto" viewBox={`0 0 ${svgW} ${svgH}`}>
+                          <defs>
+                            <linearGradient id="peakGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.2" />
+                              <stop offset="100%" stopColor="#7c3aed" stopOpacity="0" />
+                            </linearGradient>
+                          </defs>
+                          <line x1={padX} y1={padY} x2={svgW - padX} y2={padY} stroke="#f1f5f9" strokeWidth="0.5" strokeDasharray="3" />
+                          <line x1={padX} y1={padY + chartH / 2} x2={svgW - padX} y2={padY + chartH / 2} stroke="#f1f5f9" strokeWidth="0.5" strokeDasharray="3" />
+                          <line x1={padX} y1={svgH - padY} x2={svgW - padX} y2={svgH - padY} stroke="#e2e8f0" strokeWidth="0.5" />
+                          <path d={areaPath} fill="url(#peakGrad)" />
+                          <path d={linePath} fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          {pts.map((p, idx) => (
+                            <g key={idx}>
+                              {p.isPeak ? (
+                                <>
+                                  <circle cx={p.x} cy={p.y} r="5" fill="#7c3aed" opacity="0.15" />
+                                  <circle cx={p.x} cy={p.y} r="3.5" fill="#7c3aed" stroke="white" strokeWidth="1.5" />
+                                  <text x={p.x} y={p.y - 8} fill="#7c3aed" fontSize="8" fontWeight="900" textAnchor="middle">{p.count}</text>
+                                </>
+                              ) : p.count > 0 ? (
+                                <circle cx={p.x} cy={p.y} r="2" fill="#7c3aed" opacity="0.5" />
+                              ) : null}
+                              {idx % 3 === 0 && (
+                                <text x={p.x} y={svgH - 4} fill="#94a3b8" fontSize="7.5" fontWeight="600" textAnchor="middle">
+                                  {formatHour(p.hour)}
+                                </text>
+                              )}
+                            </g>
+                          ))}
+                        </svg>
+                      </div>
+                    );
+                  })()}
+                </Card>
+
               </div>
             </section>
 
