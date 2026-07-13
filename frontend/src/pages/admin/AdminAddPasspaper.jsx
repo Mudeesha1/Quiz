@@ -20,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import Footer from '../../ui/Footer';
-import { AdminHeader, AdminSidebar } from '../../ui';
+import { AdminHeader, AdminSidebar, ToastContainer, useToast } from '../../ui';
 import logoicon from '../../assets/icons/logo.png';
 import { getAuthSession } from '../../services/authService';
 
@@ -154,8 +154,7 @@ export default function AdminAddPasspaper() {
     image: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const toast = useToast();
 
   // New states for Advanced Features
   const [editingPaper, setEditingPaper] = useState(null);
@@ -287,16 +286,12 @@ export default function AdminAddPasspaper() {
       file: null,
       image: null,
     });
-    setErrorMessage('');
-    setSuccessMessage('');
     setIsModalOpen(true);
   };
 
   const handleOpenMetadataModal = (type) => {
     setMetadataType(type);
     setMetadataValue('');
-    setErrorMessage('');
-    setSuccessMessage('');
     setIsMetadataModalOpen(true);
   };
 
@@ -304,13 +299,11 @@ export default function AdminAddPasspaper() {
     e.preventDefault();
     const session = getAuthSession();
     if (!session?.tokens?.accessToken) {
-      setErrorMessage('Please sign in again.');
+      toast.error('Please sign in again.');
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
 
     try {
       const url = metadataType === 'subject'
@@ -341,14 +334,14 @@ export default function AdminAddPasspaper() {
       if (metadataType === 'subject') {
         const newSub = data?.data?.subject_name || metadataValue.trim();
         setSubjectOptions((current) => current.includes(newSub) ? current : [...current, newSub]);
-        setSuccessMessage('Subject added successfully.');
+        toast.success('Subject added successfully.');
       } else {
         const newYr = String(data?.data?.years_name || metadataValue.trim());
         setYearOptions((current) => current.includes(newYr) ? current : [...current, newYr]);
-        setSuccessMessage('Year added successfully.');
+        toast.success('Year added successfully.');
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Error occurred');
+      toast.error(err.message || 'Error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -375,13 +368,11 @@ export default function AdminAddPasspaper() {
     e.preventDefault();
     const session = getAuthSession();
     if (!session?.tokens?.accessToken) {
-      setErrorMessage('Please sign in again.');
+      toast.error('Please sign in again.');
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
     const uploadedPapers = [];
 
     try {
@@ -439,9 +430,9 @@ export default function AdminAddPasspaper() {
       setPapers((current) => [...uploadedPapers, ...current]);
       setBulkPapers([{ title: '', detail: '', grade: 'Grade 5', subject: 'Mathematics', year: CURRENT_YEAR, file: null, image: null }]);
       setBulkProgress('');
-      setSuccessMessage(`Successfully published pack of ${uploadedPapers.length} papers.`);
+      toast.success(`Successfully published pack of ${uploadedPapers.length} papers.`);
     } catch (err) {
-      setErrorMessage(err.message || 'Error occurred during bulk upload');
+      toast.error(err.message || 'Error occurred during bulk upload');
     } finally {
       setIsSubmitting(false);
       setBulkProgress('');
@@ -453,18 +444,16 @@ export default function AdminAddPasspaper() {
 
     const session = getAuthSession();
     if (!session?.tokens?.accessToken) {
-      setErrorMessage('Please sign in again to upload a paper.');
+      toast.error('Please sign in again to upload a paper.');
       return;
     }
 
     if (!formData.title.trim() || (!editingPaper && !formData.file)) {
-      setErrorMessage('Please add a title and select a PDF file.');
+      toast.error('Please add a title and select a PDF file.');
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
 
     try {
       const payload = new FormData();
@@ -522,10 +511,10 @@ export default function AdminAddPasspaper() {
       setTimeout(() => {
         if (editingPaper) {
           setPapers((current) => current.map((p) => (p.id === editingPaper.id ? updatedPaperItem : p)));
-          setSuccessMessage('Paper updated successfully.');
+          toast.success('Paper updated successfully.');
         } else {
           setPapers((current) => [updatedPaperItem, ...current]);
-          setSuccessMessage('Paper uploaded successfully.');
+          toast.success('Paper uploaded successfully.');
         }
         setSubjectOptions((current) => (current.includes(formData.subject) ? current : [...current, formData.subject]));
         setYearOptions((current) => (current.includes(formData.year.trim()) ? current : [...current, formData.year.trim()]));
@@ -533,7 +522,7 @@ export default function AdminAddPasspaper() {
         setEditingPaper(null);
       }, 100);
     } catch (error) {
-      setErrorMessage(error.message || 'Unable to save the paper.');
+      toast.error(error.message || 'Unable to save the paper.');
     } finally {
       setIsSubmitting(false);
     }
@@ -567,8 +556,6 @@ export default function AdminAddPasspaper() {
                   type="button"
                   onClick={() => {
                     setEditingPaper(null);
-                    setErrorMessage('');
-                    setSuccessMessage('');
                     resetForm();
                     setIsModalOpen(true);
                   }}
@@ -579,8 +566,6 @@ export default function AdminAddPasspaper() {
                 <button
                   type="button"
                   onClick={() => {
-                    setErrorMessage('');
-                    setSuccessMessage('');
                     setIsBulkModalOpen(true);
                   }}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-primary-container px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-95"
@@ -605,16 +590,6 @@ export default function AdminAddPasspaper() {
             </div>
 
             <div className="mt-4 flex flex-wrap gap-3">
-              {successMessage ? (
-                <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-                  {successMessage}
-                </div>
-              ) : null}
-              {errorMessage ? (
-                <div className="rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
-                  {errorMessage}
-                </div>
-              ) : null}
             </div>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -846,7 +821,6 @@ export default function AdminAddPasspaper() {
                     setIsModalOpen(false);
                     resetForm();
                     setEditingPaper(null);
-                    setErrorMessage('');
                   }}
                   className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100"
                 >
@@ -971,7 +945,6 @@ export default function AdminAddPasspaper() {
                       setIsModalOpen(false);
                       resetForm();
                       setEditingPaper(null);
-                      setErrorMessage('');
                     }}
                     className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
                   >
@@ -1006,7 +979,6 @@ export default function AdminAddPasspaper() {
                     setIsBulkModalOpen(false);
                     setBulkPapers([{ title: '', detail: '', grade: 'Grade 5', subject: 'Mathematics', year: CURRENT_YEAR, file: null, image: null }]);
                     setBulkProgress('');
-                    setErrorMessage('');
                   }}
                   className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100"
                 >
@@ -1227,6 +1199,8 @@ export default function AdminAddPasspaper() {
 
         <Footer />
       </main>
+
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
   );
 }
