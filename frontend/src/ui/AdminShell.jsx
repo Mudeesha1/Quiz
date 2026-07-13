@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom';
-import { Menu, ShieldCheck } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { LogOut, Menu, ShieldCheck } from 'lucide-react';
+import { clearAuthSession } from '../services/authService';
 
 function NavItem({ icon: Icon, label, to = '#', active = false }) {
   return (
@@ -15,7 +16,25 @@ function NavItem({ icon: Icon, label, to = '#', active = false }) {
   );
 }
 
-export function AdminSidebar({ items, open, onClose }) {
+export function AdminSidebar({ items, open, onClose, onAddQuizClick }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleAddQuizClick = () => {
+    if (location.pathname === '/admin/quizzes') {
+      if (onAddQuizClick) {
+        onAddQuizClick();
+      }
+    } else {
+      navigate('/admin/quizzes', { state: { openAddModal: true } });
+    }
+  };
+
+  const handleLogout = () => {
+    clearAuthSession();
+    navigate('/admin/login', { replace: true });
+  };
+
   return (
     <>
       {open ? <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={onClose} /> : null}
@@ -43,10 +62,20 @@ export function AdminSidebar({ items, open, onClose }) {
           ))}
         </nav>
 
-        <div className="mt-auto px-6">
-          <button className="flex w-full items-center justify-center gap-2 rounded-full bg-secondary-container px-4 py-3 text-sm font-bold text-secondary shadow-sm transition hover:opacity-95">
+        <div className="mt-auto px-6 space-y-3">
+          <button
+            onClick={handleAddQuizClick}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-secondary-container px-4 py-3 text-sm font-bold text-secondary shadow-sm transition hover:opacity-95 cursor-pointer"
+          >
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-secondary">+</span>
             Add New Quiz
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-rose-50 border border-rose-200 px-4 py-3 text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100/50 cursor-pointer animate-fade-in"
+          >
+            <LogOut size={16} />
+            Log Out
           </button>
         </div>
       </aside>
