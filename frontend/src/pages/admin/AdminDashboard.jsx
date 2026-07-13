@@ -17,7 +17,7 @@ import {
   Flame,
 } from 'lucide-react';
 import Footer from '../../ui/Footer';
-import { AdminHeader, AdminSidebar, ButtonPrimary, Card } from '../../ui';
+import { AdminHeader, AdminSidebar, ButtonPrimary, Card, ToastContainer, useToast } from '../../ui';
 import { getAuthSession } from '../../services/authService';
 
 const NAV_ITEMS = [
@@ -32,9 +32,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
   const [stats, setStats] = useState(null);
   
   // Modal for all activity
@@ -42,7 +42,6 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     setIsLoading(true);
-    setErrorMessage('');
     const session = getAuthSession();
     if (!session?.tokens?.accessToken) {
       navigate('/admin/login');
@@ -65,7 +64,7 @@ export default function AdminDashboard() {
         setStats(resJson.data);
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Error occurred while loading dashboard statistics.');
+      toast.error(err.message || 'Error occurred while loading dashboard statistics.');
     } finally {
       setIsLoading(false);
     }
@@ -123,12 +122,6 @@ export default function AdminDashboard() {
               <ArrowRight size={16} />
             </ButtonPrimary>
           </div>
-
-          {errorMessage && (
-            <div className="mt-6 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm font-semibold text-rose-700">
-              {errorMessage}
-            </div>
-          )}
         </section>
 
         {isLoading ? (
@@ -647,6 +640,8 @@ export default function AdminDashboard() {
 
         <Footer />
       </main>
+
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
   );
 }
