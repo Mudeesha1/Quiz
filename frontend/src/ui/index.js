@@ -8,7 +8,7 @@ export { Card, QuizCard, CardContent, CardHeader, CardFooter } from './Card';
 export { Chip, ChipGroup } from './Chip';
 export { ProgressBar } from './ProgressBar';
 export { TextInput, Select } from './Input';
-export { Toast, useToast } from './Toast';
+export { Toast, ToastContainer, useToast } from './Toast';
 export { Badge } from './Badge';
 export { StudentHeader, StudentSidebar } from './StudentShell';
 export { AdminHeader, AdminSidebar } from './AdminShell';
