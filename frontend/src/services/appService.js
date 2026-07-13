@@ -259,3 +259,22 @@ export async function getLeaderboard(subject) {
 
   return response.json();
 }
+
+export async function getSubjects() {
+  const session = getAuthSession();
+  const headers = { "Content-Type": "application/json" };
+  if (session?.tokens?.accessToken) {
+    headers["Authorization"] = `Bearer ${session.tokens.accessToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/app/subjects`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    return parseErrorResponse(response);
+  }
+
+  return response.json();
+}
