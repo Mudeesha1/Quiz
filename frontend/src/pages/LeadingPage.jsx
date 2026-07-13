@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { clearAuthSession, getUserProfile } from '../services/authService';
-import { getLeaderboard } from '../services/appService';
+import { getLeaderboard, getSubjects } from '../services/appService';
 import onePlaceIcon from '../assets/icons/1place.svg';
 import onePlaceBadgeIcon from '../assets/icons/1placebadge.svg';
 import twoPlaceIcon from '../assets/icons/2place.svg';
@@ -32,13 +32,14 @@ const NAV_ITEMS = [
 	{ label: 'Profile', icon: CircleUser, to: '/profile' },
 ];
 
-const SUBJECTS = ['All Subjects', 'Mathematics', 'Science', 'English', 'Environment'];
-
 function getProfileImageUrl(profileUrl, name) {
 	const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 	if (profileUrl) {
+		if (profileUrl.startsWith('http')) return profileUrl;
 		if (profileUrl.startsWith('/')) {
-			return `${API_BASE_URL}${profileUrl}`;
+			// profileUrl already starts with /api/v1/uploads/... — strip /api/v1 from base
+			const baseUrl = API_BASE_URL.replace('/api/v1', '');
+			return `${baseUrl}${profileUrl}`;
 		}
 		return profileUrl;
 	}
@@ -124,11 +125,27 @@ export default function LeadingPage() {
 	const [activeTab, setActiveTab] = useState('global');
 	const [selectedSubject, setSelectedSubject] = useState('All Subjects');
 	const [userData, setUserData] = useState(null);
+	const [subjects, setSubjects] = useState(['All Subjects', 'Mathematics', 'Science', 'English', 'Environment']);
 
 	// Backend leaderboard state
 	const [leaderboardData, setLeaderboardData] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+
+	useEffect(() => {
+		const loadSubjects = async () => {
+			try {
+				const res = await getSubjects();
+				if (res.status === 'success' && Array.isArray(res.data)) {
+					const subjectNames = res.data.map((s) => s.subject_name);
+					setSubjects(['All Subjects', ...subjectNames]);
+				}
+			} catch (err) {
+				console.error('Error fetching subjects:', err);
+			}
+		};
+		loadSubjects();
+	}, []);
 
 	useEffect(() => {
 		document.title = 'Leaderboard | Quiz Master';
@@ -274,7 +291,7 @@ export default function LeadingPage() {
 
 						{activeTab === 'subject' ? (
 							<ChipGroup className="gap-2 md:gap-3">
-								{SUBJECTS.map((subject) => (
+								{subjects.map((subject) => (
 									<Chip
 										key={subject}
 										selected={selectedSubject === subject}

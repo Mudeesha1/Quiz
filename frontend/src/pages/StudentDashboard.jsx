@@ -278,25 +278,21 @@ export default function StudentDashboard() {
 
   const getProfileImageUrl = (profileUrl, fullname) => {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
-    
-    // If profileUrl exists
     if (profileUrl) {
-      // If it's a relative path from database, prepend the API base URL
+      if (profileUrl.startsWith('http')) return profileUrl;
       if (profileUrl.startsWith('/')) {
-        return `${API_BASE_URL}${profileUrl}`;
+        // profileUrl already starts with /api/v1/uploads/... — strip /api/v1 from base
+        const baseUrl = API_BASE_URL.replace('/api/v1', '');
+        return `${baseUrl}${profileUrl}`;
       }
-      // If it's already a full URL, use as is
       return profileUrl;
     }
-    
-    // If no profileUrl, generate a DiceBear avatar with initials from fullname
     const initials = fullname
       ?.split(' ')
       .map(name => name[0])
       .join('')
       .toUpperCase()
       .slice(0, 2) || 'U';
-    
     return `https://api.dicebear.com/9.x/initials/svg?seed=${initials}&background=%23ffffff`;
   };
 

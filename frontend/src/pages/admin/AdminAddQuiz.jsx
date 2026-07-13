@@ -30,6 +30,7 @@ const NAV_ITEMS = [
   { label: 'Quizzes', icon: FileText, to: '/admin/quizzes', active: true },
   { label: 'Past Papers', icon: ShieldCheck, to: '/admin/past-papers' },
   { label: 'Users', icon: Users, to: '/admin/users' },
+  { label: 'AI Assistant', icon: Sparkles, to: '/admin/ai-assistant' },
   { label: 'Settings', icon: Settings, to: '/admin/settings' },
 ];
 
@@ -78,6 +79,7 @@ export default function AdminAddQuiz() {
     title: '',
     description: '',
     time_limit: 300,
+    questions_to_show: '',
     grade: 'Grade 5',
     subject: 'Mathematics',
     questions: []
@@ -121,24 +123,43 @@ export default function AdminAddQuiz() {
     loadQuizzes();
   }, []);
 
-  // Open the add modal if triggered from sidebar navigation state
+  // Open the add modal if triggered from sidebar navigation state or AI assistant
   useEffect(() => {
     if (location.state?.openAddModal) {
-      handleOpenAddModal();
+      if (location.state?.generatedQuiz) {
+        const quiz = location.state.generatedQuiz;
+        setFormData({
+          title: quiz.title || '',
+          description: quiz.description || '',
+          time_limit: quiz.time_limit || 300,
+          questions_to_show: quiz.questions_to_show || '',
+          grade: quiz.grade || 'Grade 5',
+          subject: quiz.subject || 'Mathematics',
+          questions: quiz.questions || []
+        });
+        setIsModalOpen(true);
+      } else {
+        handleOpenAddModal();
+      }
       navigate(location.pathname, { replace: true });
     }
   }, [location.state, navigate]);
 
   // Automatically calculate and update time limit based on questions count
   useEffect(() => {
+    const activeCount = formData.questions_to_show && parseInt(formData.questions_to_show) > 0 && parseInt(formData.questions_to_show) < formData.questions.length
+      ? parseInt(formData.questions_to_show)
+      : formData.questions.length;
     setFormData((prev) => ({
       ...prev,
-      time_limit: (prev.questions.length * 60) + (EXTRA_TIME_MINUTES * 60),
+      time_limit: (activeCount * 60) + (EXTRA_TIME_MINUTES * 60),
     }));
-  }, [formData.questions.length]);
+  }, [formData.questions.length, formData.questions_to_show]);
 
-  // Filter quizzes
-  const visibleQuizzes = useMemo(() => {
+  const QUIZZES_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredQuizzes = useMemo(() => {
     return quizzes.filter((quiz) => {
       const matchesSearch = `${quiz.title} ${quiz.subject} ${quiz.grade}`
         .toLowerCase()
@@ -147,6 +168,17 @@ export default function AdminAddQuiz() {
       return matchesSearch && matchesSubject;
     });
   }, [quizzes, searchTerm, selectedSubject]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedSubject]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredQuizzes.length / QUIZZES_PER_PAGE));
+  const visibleQuizzes = useMemo(() => {
+    const start = (currentPage - 1) * QUIZZES_PER_PAGE;
+    return filteredQuizzes.slice(start, start + QUIZZES_PER_PAGE);
+  }, [filteredQuizzes, currentPage]);
 
   // Statistics calculation
   const totalQuizzes = quizzes.length;
@@ -167,6 +199,7 @@ export default function AdminAddQuiz() {
       title: '',
       description: '',
       time_limit: 300,
+      questions_to_show: '',
       grade: gradeOptions[0] || 'Grade 5',
       subject: subjectOptions[0] || 'Mathematics',
       questions: [
@@ -175,11 +208,12 @@ export default function AdminAddQuiz() {
           question_type: 'single',
           xp_reward: 2,
           image_url: '',
+          hint: '',
           options: [
-            { option_text: '', is_correct: true },
-            { option_text: '', is_correct: false },
-            { option_text: '', is_correct: false },
-            { option_text: '', is_correct: false }
+            { option_text: '', is_correct: true, explanation: '' },
+            { option_text: '', is_correct: false, explanation: '' },
+            { option_text: '', is_correct: false, explanation: '' },
+            { option_text: '', is_correct: false, explanation: '' }
           ]
         }
       ]
@@ -195,6 +229,7 @@ export default function AdminAddQuiz() {
       title: quiz.title,
       description: quiz.description || '',
       time_limit: quiz.time_limit || 300,
+      questions_to_show: quiz.questions_to_show || '',
       grade: quiz.grade,
       subject: quiz.subject,
       questions: quiz.questions?.length
@@ -203,16 +238,18 @@ export default function AdminAddQuiz() {
             question_type: q.question_type || 'single',
             xp_reward: q.xp_reward || 2,
             image_url: q.image_url || '',
+            hint: q.hint || '',
             options: q.options?.length
               ? q.options.map((o) => ({
                   option_text: o.option_text,
-                  is_correct: o.is_correct
+                  is_correct: o.is_correct,
+                  explanation: o.explanation || ''
                 }))
               : [
-                  { option_text: '', is_correct: true },
-                  { option_text: '', is_correct: false },
-                  { option_text: '', is_correct: false },
-                  { option_text: '', is_correct: false }
+                  { option_text: '', is_correct: true, explanation: '' },
+                  { option_text: '', is_correct: false, explanation: '' },
+                  { option_text: '', is_correct: false, explanation: '' },
+                  { option_text: '', is_correct: false, explanation: '' }
                 ]
           }))
         : [
@@ -220,11 +257,12 @@ export default function AdminAddQuiz() {
               question_text: '',
               question_type: 'single',
               xp_reward: 2,
+              hint: '',
               options: [
-                { option_text: '', is_correct: true },
-                { option_text: '', is_correct: false },
-                { option_text: '', is_correct: false },
-                { option_text: '', is_correct: false }
+                { option_text: '', is_correct: true, explanation: '' },
+                { option_text: '', is_correct: false, explanation: '' },
+                { option_text: '', is_correct: false, explanation: '' },
+                { option_text: '', is_correct: false, explanation: '' }
               ]
             }
           ]
@@ -274,11 +312,12 @@ export default function AdminAddQuiz() {
           question_type: 'single',
           xp_reward: 2,
           image_url: '',
+          hint: '',
           options: [
-            { option_text: '', is_correct: true },
-            { option_text: '', is_correct: false },
-            { option_text: '', is_correct: false },
-            { option_text: '', is_correct: false }
+            { option_text: '', is_correct: true, explanation: '' },
+            { option_text: '', is_correct: false, explanation: '' },
+            { option_text: '', is_correct: false, explanation: '' },
+            { option_text: '', is_correct: false, explanation: '' }
           ]
         }
       ]
@@ -316,6 +355,24 @@ export default function AdminAddQuiz() {
     setFormData((prev) => {
       const newQuestions = [...prev.questions];
       newQuestions[qIdx].options[oIdx].option_text = text;
+      return { ...prev, questions: newQuestions };
+    });
+  };
+
+  // Handle Option Explanation Change
+  const handleOptionExplanationChange = (qIdx, oIdx, explanation) => {
+    setFormData((prev) => {
+      const newQuestions = [...prev.questions];
+      newQuestions[qIdx].options[oIdx].explanation = explanation;
+      return { ...prev, questions: newQuestions };
+    });
+  };
+
+  // Handle Hint Change
+  const handleQuestionHintChange = (qIdx, hint) => {
+    setFormData((prev) => {
+      const newQuestions = [...prev.questions];
+      newQuestions[qIdx].hint = hint;
       return { ...prev, questions: newQuestions };
     });
   };
@@ -448,9 +505,21 @@ export default function AdminAddQuiz() {
           title: formData.title.trim(),
           description: formData.description.trim(),
           time_limit: parseInt(formData.time_limit),
+          questions_to_show: formData.questions_to_show ? parseInt(formData.questions_to_show) : null,
           grade: formData.grade,
           subject: formData.subject,
-          questions: formData.questions
+          questions: formData.questions.map(q => ({
+            question_text: q.question_text.trim(),
+            question_type: q.question_type,
+            xp_reward: parseInt(q.xp_reward),
+            image_url: q.image_url || null,
+            hint: q.hint?.trim() || null,
+            options: q.options.map(opt => ({
+              option_text: opt.option_text.trim(),
+              is_correct: opt.is_correct,
+              explanation: opt.explanation?.trim() || null,
+            }))
+          }))
         }),
       });
 
@@ -578,7 +647,7 @@ export default function AdminAddQuiz() {
                         <div>
                           <h4 className="text-lg font-black text-slate-900">{quiz.title}</h4>
                           <p className="mt-1 text-sm text-slate-500">
-                            {quiz.grade} • {quiz.subject} • {quiz.questionsCount} Questions • {quiz.time_limit ? `${Math.round(quiz.time_limit / 60)}m` : 'N/A'} Limit
+                            {quiz.grade} • {quiz.subject} • {quiz.questions_to_show ? `${quiz.questions_to_show} of ${quiz.questionsCount}` : quiz.questionsCount} Questions • {quiz.time_limit ? `${Math.round(quiz.time_limit / 60)}m` : 'N/A'} Limit
                           </p>
                         </div>
                       </div>
@@ -607,6 +676,55 @@ export default function AdminAddQuiz() {
                     No quizzes match your current filters.
                   </div>
                 )}
+
+                {/* Pagination */}
+                {filteredQuizzes.length > 0 && (
+                  <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 rounded-b-[2rem] px-6 py-4 mt-2 md:flex-row md:items-center md:justify-between">
+                    <span className="text-sm text-slate-500">
+                      Showing {filteredQuizzes.length === 0 ? 0 : (currentPage - 1) * QUIZZES_PER_PAGE + 1}–{Math.min(currentPage * QUIZZES_PER_PAGE, filteredQuizzes.length)} of {filteredQuizzes.length} quizzes
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        Previous
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                        .reduce((acc, page, idx, arr) => {
+                          if (idx > 0 && page - arr[idx - 1] > 1) acc.push('...');
+                          acc.push(page);
+                          return acc;
+                        }, [])
+                        .map((item, idx) =>
+                          item === '...' ? (
+                            <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-sm">…</span>
+                          ) : (
+                            <button
+                              key={item}
+                              onClick={() => setCurrentPage(item)}
+                              className={`h-9 w-9 rounded-full text-sm font-bold transition cursor-pointer ${
+                                currentPage === item
+                                  ? 'bg-primary text-white shadow-sm'
+                                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              {item}
+                            </button>
+                          )
+                        )}
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        Next <ArrowRight size={16} className="ml-1 inline" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </Card>
@@ -615,7 +733,7 @@ export default function AdminAddQuiz() {
         {/* Add/Edit Quiz Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
-            <div className="w-full max-w-5xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl overflow-y-auto max-h-[85vh]">
+            <div className="w-full max-w-7xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl overflow-y-auto max-h-[85vh]">
               
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
@@ -650,7 +768,7 @@ export default function AdminAddQuiz() {
                     />
                   </div>
 
-                  <div className="grid gap-3 grid-cols-3">
+                  <div className="grid gap-3 grid-cols-4">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Grade</label>
                       <select
@@ -675,6 +793,19 @@ export default function AdminAddQuiz() {
                           <option key={idx} value={sub}>{sub}</option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Quest to Show</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={formData.questions.length}
+                        placeholder="All"
+                        value={formData.questions_to_show}
+                        onChange={(e) => setFormData(prev => ({ ...prev, questions_to_show: e.target.value }))}
+                        className="w-full rounded-2xl border border-slate-200 px-3 py-3 text-sm font-medium text-slate-800 outline-none focus:border-primary"
+                      />
                     </div>
 
                     <div>
@@ -760,6 +891,19 @@ export default function AdminAddQuiz() {
                           </div>
                         </div>
 
+                        <div className="mt-3">
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                            Question Hint (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Provide a clue to help the student..."
+                            value={question.hint || ''}
+                            onChange={(e) => handleQuestionHintChange(qIdx, e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-primary placeholder:text-slate-400 placeholder:italic"
+                          />
+                        </div>
+
                         {/* Options Input Block */}
                         <div className="mt-4">
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
@@ -767,21 +911,30 @@ export default function AdminAddQuiz() {
                           </label>
                           <div className="grid gap-3 sm:grid-cols-2">
                             {question.options.map((opt, oIdx) => (
-                              <div key={oIdx} className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2.5">
-                                <input
-                                  type="radio"
-                                  name={`correct-option-${qIdx}`}
-                                  checked={opt.is_correct}
-                                  onChange={() => handleMarkOptionCorrect(qIdx, oIdx)}
-                                  className="h-4 w-4 text-primary focus:ring-primary cursor-pointer"
-                                />
+                              <div key={oIdx} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+                                <div className="flex items-center gap-2.5">
+                                  <input
+                                    type="radio"
+                                    name={`correct-option-${qIdx}`}
+                                    checked={opt.is_correct}
+                                    onChange={() => handleMarkOptionCorrect(qIdx, oIdx)}
+                                    className="h-4 w-4 text-primary focus:ring-primary cursor-pointer"
+                                  />
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder={`Choice ${oIdx + 1}`}
+                                    value={opt.option_text}
+                                    onChange={(e) => handleOptionTextChange(qIdx, oIdx, e.target.value)}
+                                    className="flex-1 border-none bg-transparent p-0 text-sm font-extrabold text-slate-800 outline-none focus:ring-0"
+                                  />
+                                </div>
                                 <input
                                   type="text"
-                                  required
-                                  placeholder={`Choice ${oIdx + 1}`}
-                                  value={opt.option_text}
-                                  onChange={(e) => handleOptionTextChange(qIdx, oIdx, e.target.value)}
-                                  className="flex-1 border-none bg-transparent p-0 text-sm font-medium text-slate-800 outline-none focus:ring-0"
+                                  placeholder="Explanation (Why correct or incorrect)"
+                                  value={opt.explanation || ''}
+                                  onChange={(e) => handleOptionExplanationChange(qIdx, oIdx, e.target.value)}
+                                  className="w-full rounded-lg border border-slate-100 bg-slate-50/50 px-2 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:border-primary/40 focus:bg-white"
                                 />
                               </div>
                             ))}

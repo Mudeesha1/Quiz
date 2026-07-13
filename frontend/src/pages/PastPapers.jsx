@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clearAuthSession } from '../services/authService';
 import { getPapersAndFilters, downloadPaper, bookmarkPaper, completePaper } from '../services/appService';
@@ -182,14 +182,25 @@ export default function PastPapers() {
 		}
 	};
 
-	// Local filtering logic
-	const visiblePapers = papers.filter((paper) => {
+	const PAPERS_PER_PAGE = 6;
+	const [currentPage, setCurrentPage] = useState(1);
+
+	const visiblePapers = useMemo(() => papers.filter((paper) => {
 		const haystack = `${paper.subject} ${paper.title} ${paper.year} ${paper.detail || ''}`.toLowerCase();
 		const matchesSearch = haystack.includes(searchTerm.toLowerCase());
 		const matchesSubject = selectedSubject === 'All Subjects' || paper.subject === selectedSubject;
 		const matchesYear = selectedYear === 'All Years' || paper.year === selectedYear;
 		return matchesSearch && matchesSubject && matchesYear;
-	});
+	}), [papers, searchTerm, selectedSubject, selectedYear]);
+
+	// Reset to page 1 when filters change
+	useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedSubject, selectedYear]);
+
+	const totalPages = Math.max(1, Math.ceil(visiblePapers.length / PAPERS_PER_PAGE));
+	const pagedPapers = useMemo(() => {
+		const start = (currentPage - 1) * PAPERS_PER_PAGE;
+		return visiblePapers.slice(start, start + PAPERS_PER_PAGE);
+	}, [visiblePapers, currentPage]);
 
 	return (
 		<div className="min-h-screen overflow-x-hidden bg-surface text-on-surface font-body-md">
@@ -297,8 +308,9 @@ export default function PastPapers() {
 									</CardContent>
 								</Card>
 							) : visiblePapers.length > 0 ? (
-								<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-									{visiblePapers.map((paper) => {
+								<>
+									<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+										{pagedPapers.map((paper) => {
 										const statusDetails = getPaperStatusDetails(paper);
 										const StatusIcon = statusDetails.icon;
 
@@ -377,7 +389,57 @@ export default function PastPapers() {
 											</Card>
 										);
 									})}
-								</div>
+									</div>
+
+									{/* Pagination */}
+									{totalPages > 1 && (
+										<div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between border-t-2 border-outline-variant pt-6 mt-2">
+											<span className="text-sm font-semibold text-on-surface-variant">
+												Showing {visiblePapers.length === 0 ? 0 : (currentPage - 1) * PAPERS_PER_PAGE + 1}–{Math.min(currentPage * PAPERS_PER_PAGE, visiblePapers.length)} of {visiblePapers.length} papers
+											</span>
+											<div className="flex items-center gap-2">
+												<button
+													onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+													disabled={currentPage === 1}
+													className="rounded-full border-2 border-outline-variant bg-surface px-4 py-2 text-sm font-bold text-on-surface-variant transition hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+												>
+													Prev
+												</button>
+												{Array.from({ length: totalPages }, (_, i) => i + 1)
+													.filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+													.reduce((acc, page, idx, arr) => {
+														if (idx > 0 && page - arr[idx - 1] > 1) acc.push('…');
+														acc.push(page);
+														return acc;
+													}, [])
+													.map((item, idx) =>
+														typeof item === 'string' ? (
+															<span key={`el-${idx}`} className="px-1 text-on-surface-variant text-sm">{item}</span>
+														) : (
+															<button
+																key={item}
+																onClick={() => setCurrentPage(item)}
+																className={`h-10 w-10 rounded-full text-sm font-bold transition cursor-pointer ${
+																	currentPage === item
+																		? 'bg-primary text-white shadow-[0px_4px_0px_0px_#2e23a8]'
+																		: 'border-2 border-outline-variant bg-surface text-on-surface-variant hover:border-primary hover:text-primary'
+																}`}
+															>
+																{item}
+															</button>
+														)
+													)}
+												<button
+													onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+													disabled={currentPage === totalPages}
+													className="rounded-full border-2 border-outline-variant bg-surface px-4 py-2 text-sm font-bold text-on-surface-variant transition hover:border-primary hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+												>
+													Next
+												</button>
+											</div>
+										</div>
+									)}
+								</>
 							) : (
 								<Card className="rounded-[1.75rem] border-2 border-dashed border-outline-variant bg-surface-container-lowest shadow-sm">
 									<CardContent className="flex flex-col items-center justify-center py-16 text-center">

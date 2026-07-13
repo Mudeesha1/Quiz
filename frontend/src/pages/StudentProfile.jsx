@@ -263,8 +263,11 @@ export default function StudentProfile() {
 	const getProfileImageUrl = (profileUrl, name) => {
 		const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 		if (profileUrl) {
+			if (profileUrl.startsWith('http')) return profileUrl;
 			if (profileUrl.startsWith('/')) {
-				return `${API_BASE_URL}${profileUrl}`;
+				// profileUrl already starts with /api/v1/uploads/... — strip /api/v1 from base
+				const baseUrl = API_BASE_URL.replace('/api/v1', '');
+				return `${baseUrl}${profileUrl}`;
 			}
 			return profileUrl;
 		}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ArrowRight,
   BookOpen,
   BrainCircuit,
   CalendarDays,
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { label: 'Quizzes', icon: FileText, to: '/admin/quizzes' },
   { label: 'Past Papers', icon: ShieldCheck, to: '/admin/past-papers', active: true },
   { label: 'Users', icon: Users, to: '/admin/users' },
+  { label: 'AI Assistant', icon: Sparkles, to: '/admin/ai-assistant' },
   { label: 'Settings', icon: Settings, to: '/admin/settings' },
 ];
 
@@ -231,7 +233,10 @@ export default function AdminAddPasspaper() {
     });
   }, [papers]);
 
-  const visiblePapers = useMemo(() => {
+  const PAPERS_PER_PAGE = 9;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredPapers = useMemo(() => {
     const basePapers = filterMonth ? uploadedThisMonthPapers : papers;
     return basePapers.filter((paper) => {
       const matchesSearch = `${paper.title} ${paper.description || paper.detail || ''} ${paper.subject}`
@@ -244,6 +249,17 @@ export default function AdminAddPasspaper() {
       return matchesSearch && matchesGrade && matchesSubject && matchesYear;
     });
   }, [papers, searchTerm, selectedGrade, selectedSubject, selectedYear, filterMonth, uploadedThisMonthPapers]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedGrade, selectedSubject, selectedYear, filterMonth]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPapers.length / PAPERS_PER_PAGE));
+  const visiblePapers = useMemo(() => {
+    const start = (currentPage - 1) * PAPERS_PER_PAGE;
+    return filteredPapers.slice(start, start + PAPERS_PER_PAGE);
+  }, [filteredPapers, currentPage]);
 
   useEffect(() => {
     if (gradeOptions.length > 0 && !gradeOptions.includes(formData.grade)) {
@@ -800,6 +816,55 @@ export default function AdminAddPasspaper() {
                 No papers match your current filters yet.
               </div>
             ) : null}
+
+            {/* Pagination */}
+            {filteredPapers.length > 0 && (
+              <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 rounded-b-[2rem] px-6 py-4 mt-4 md:flex-row md:items-center md:justify-between">
+                <span className="text-sm text-slate-500">
+                  Showing {filteredPapers.length === 0 ? 0 : (currentPage - 1) * PAPERS_PER_PAGE + 1}–{Math.min(currentPage * PAPERS_PER_PAGE, filteredPapers.length)} of {filteredPapers.length} papers
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                    .reduce((acc, page, idx, arr) => {
+                      if (idx > 0 && page - arr[idx - 1] > 1) acc.push('...');
+                      acc.push(page);
+                      return acc;
+                    }, [])
+                    .map((item, idx) =>
+                      item === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-sm">…</span>
+                      ) : (
+                        <button
+                          key={item}
+                          onClick={() => setCurrentPage(item)}
+                          className={`h-9 w-9 rounded-full text-sm font-bold transition cursor-pointer ${
+                            currentPage === item
+                              ? 'bg-primary text-white shadow-sm'
+                              : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      )
+                    )}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Next <ArrowRight size={16} className="ml-1 inline" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

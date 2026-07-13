@@ -63,8 +63,11 @@ const getQuizzes = async (req, res, next) => {
 		// Format quizzes
 		const formattedQuizzes = quizzes.map((quiz) => {
 			const qCount = quiz.questions?.length || 0;
-			const totalXp = qCount * 2; // Questions count X 2xp
-			const timeLimit = quiz.time_limit || (qCount * 60 + 120);
+			const activeQCount = quiz.questions_to_show && quiz.questions_to_show > 0 && quiz.questions_to_show < qCount
+				? quiz.questions_to_show
+				: qCount;
+			const totalXp = activeQCount * 2; // Questions count X 2xp
+			const timeLimit = quiz.time_limit || (activeQCount * 60 + 120);
 			const isCompleted = completedQuizIds.has(quiz.id);
 
 			return {
@@ -75,6 +78,7 @@ const getQuizzes = async (req, res, next) => {
 				grade: quiz.gradeHasSubject?.grade?.grade_name || "Unknown",
 				reward: `+${totalXp} XP`,
 				timeLimit: timeLimit,
+				questions_to_show: quiz.questions_to_show,
 				progress: isCompleted ? 100 : 0,
 				progressLabel: isCompleted ? "Completed" : "New",
 				buttonLabel: isCompleted ? "Play Again" : "Start Quiz",
@@ -140,21 +144,27 @@ const getQuizById = async (req, res, next) => {
 			});
 		}
 
+		// Randomize questions selection if questions_to_show is defined and valid
+		let selectedQuestions = [...(quiz.questions || [])];
+		if (quiz.questions_to_show && quiz.questions_to_show > 0 && quiz.questions_to_show < selectedQuestions.length) {
+			selectedQuestions = selectedQuestions.sort(() => Math.random() - 0.5).slice(0, quiz.questions_to_show);
+		} else {
+			selectedQuestions.sort((a, b) => a.question_order - b.question_order);
+		}
+
 		// Calculate time limit if null
-		const questionsCount = quiz.questions?.length || 0;
-		const timeLimit = quiz.time_limit || (questionsCount * 60 + 120);
+		const timeLimit = quiz.time_limit || (selectedQuestions.length * 60 + 120);
 
-		// Format questions and options
-		// Sort questions by question_order
-		const sortedQuestions = (quiz.questions || []).sort((a, b) => a.question_order - b.question_order);
-
-		const formattedQuestions = sortedQuestions.map((q) => {
-			// Sort options by option_order
-			const sortedOptions = (q.options || []).sort((a, b) => a.option_order - b.option_order);
-			const formattedOptions = sortedOptions.map((opt, index) => ({
+		// Format questions and randomize options order
+		const formattedQuestions = selectedQuestions.map((q) => {
+			// Randomize options order
+			const shuffledOptions = [...(q.options || [])].sort(() => Math.random() - 0.5);
+			const formattedOptions = shuffledOptions.map((opt, index) => ({
 				id: opt.id,
 				letter: ["A", "B", "C", "D"][index] || String(index + 1),
 				label: opt.option_text,
+				isCorrect: opt.is_correct,
+				explanation: opt.explanation,
 			}));
 
 			return {
@@ -163,6 +173,7 @@ const getQuizById = async (req, res, next) => {
 				subject: quiz.gradeHasSubject?.subject?.subject_name || "Other",
 				text: q.question_text,
 				image: getFullImageUrl(q.image_url),
+				hint: q.hint,
 				options: formattedOptions,
 			};
 		});
@@ -188,7 +199,14 @@ const submitQuiz = async (req, res, next) => {
 	try {
 		const userId = req.userId;
 		const { quizId } = req.params;
-		const { answers, elapsedSeconds } = req.body; // answers: { questionId: selectedOptionId }
+		const { answers, elapsedSeconds, questionIds } = req.body; // answers: { questionId: selectedOptionId }, questionIds: [id1, id2, ...]
+
+		if (!answers || Object.keys(answers).length === 0) {
+			return res.status(400).json({
+				status: "fail",
+				message: "You must answer at least one question to submit this quiz.",
+			});
+		}
 
 		if (!userId) {
 			return res.status(401).json({
@@ -214,7 +232,11 @@ const submitQuiz = async (req, res, next) => {
 			});
 		}
 
-		const questions = quiz.questions || [];
+		let questions = quiz.questions || [];
+		if (Array.isArray(questionIds) && questionIds.length > 0) {
+			const idSet = new Set(questionIds.map(Number));
+			questions = questions.filter((q) => idSet.has(q.id));
+		}
 		const totalQuestions = questions.length;
 		let correctAnswers = 0;
 
