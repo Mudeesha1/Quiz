@@ -1,5 +1,5 @@
 const express = require("express");
-const { getGrades, getSubjectsByGrade, getTopRankedUsers, getLeaderboard } = require("./controllers/grade.controller");
+const { getGrades, getSubjectsByGrade, getTopRankedUsers, getLeaderboard, getSubjects } = require("./controllers/grade.controller");
 const { getPapers, createPaper, updatePaper, downloadPaper, bookmarkPaper, completePaper, createSubject, createYear } = require("./controllers/paper.controller");
 const { getQuizzes, getQuizById, submitQuiz } = require("./controllers/quiz.controller");
 const { requireUser, requireUserOrAdmin } = require("../../middleware/auth");
@@ -24,6 +24,7 @@ applicationRoutes.get("/leaderboard/top-3", getTopRankedUsers);
 applicationRoutes.get("/papers", requireUserOrAdmin, getPapers);
 applicationRoutes.post("/papers", requireUserOrAdmin, uploadMultipleFiles("papers"), createPaper);
 applicationRoutes.put("/papers/:paperId", requireUserOrAdmin, uploadMultipleFiles("papers"), updatePaper);
+applicationRoutes.get("/subjects", requireUser, getSubjects);
 applicationRoutes.post("/subjects", requireUserOrAdmin, createSubject);
 applicationRoutes.post("/years", requireUserOrAdmin, createYear);
 applicationRoutes.post("/papers/:paperId/download", requireUserOrAdmin, downloadPaper);
