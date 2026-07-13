@@ -20,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import Footer from '../../ui/Footer';
-import { AdminHeader, AdminSidebar, ButtonPrimary, Card } from '../../ui';
+import { AdminHeader, AdminSidebar, ButtonPrimary, Card, ToastContainer, useToast } from '../../ui';
 import logoicon from '../../assets/icons/logo.png';
 import { getAuthSession } from '../../services/authService';
 
@@ -44,8 +44,7 @@ export default function AdminUserManage() {
   const [gradeOptions, setGradeOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const toast = useToast();
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,11 +71,10 @@ export default function AdminUserManage() {
     setPerformanceData({ quizAttempts: [], badges: [] });
     setIsPerformanceModalOpen(true);
     setIsPerformanceLoading(true);
-    setErrorMessage('');
 
     const session = getAuthSession();
     if (!session?.tokens?.accessToken) {
-      setErrorMessage('Authorization expired. Please login again.');
+      toast.error('Authorization expired. Please login again.');
       setIsPerformanceLoading(false);
       return;
     }
@@ -100,7 +98,7 @@ export default function AdminUserManage() {
         });
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Error loading performance details.');
+      toast.error(err.message || 'Error loading performance details.');
     } finally {
       setIsPerformanceLoading(false);
     }
@@ -153,7 +151,7 @@ export default function AdminUserManage() {
         setFormData((prev) => ({ ...prev, grade: grades[0] }));
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to load user directories.');
+      toast.error(err.message || 'Failed to load user directories.');
     } finally {
       setIsLoading(false);
     }
@@ -175,8 +173,6 @@ export default function AdminUserManage() {
       status: 'Active',
       file: null,
     });
-    setErrorMessage('');
-    setSuccessMessage('');
     setIsModalOpen(true);
   };
 
@@ -192,8 +188,6 @@ export default function AdminUserManage() {
       status: user.status || 'Active',
       file: null,
     });
-    setErrorMessage('');
-    setSuccessMessage('');
     setIsModalOpen(true);
   };
 
@@ -201,13 +195,11 @@ export default function AdminUserManage() {
     event.preventDefault();
     const session = getAuthSession();
     if (!session?.tokens?.accessToken) {
-      setErrorMessage('Authorization expired. Please login again.');
+      toast.error('Authorization expired. Please login again.');
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
 
     try {
       const url = editingUser
@@ -247,10 +239,10 @@ export default function AdminUserManage() {
       }
 
       setIsModalOpen(false);
-      setSuccessMessage(editingUser ? 'User details updated successfully.' : 'New user created successfully.');
-      loadData(); // Reload latest list
+      toast.success(editingUser ? 'User details updated successfully.' : 'New user created successfully.');
+      loadData();
     } catch (err) {
-      setErrorMessage(err.message || 'Error occurred while saving the user.');
+      toast.error(err.message || 'Error occurred while saving the user.');
     } finally {
       setIsSubmitting(false);
     }
@@ -262,12 +254,9 @@ export default function AdminUserManage() {
 
     const session = getAuthSession();
     if (!session?.tokens?.accessToken) {
-      setErrorMessage('Authorization expired. Please login again.');
+      toast.error('Authorization expired. Please login again.');
       return;
     }
-
-    setErrorMessage('');
-    setSuccessMessage('');
 
     try {
       const response = await fetch(`${API_BASE_URL}/admin/users/${user.id}`, {
@@ -282,10 +271,10 @@ export default function AdminUserManage() {
         throw new Error(data?.message || 'Failed to delete the user.');
       }
 
-      setSuccessMessage('User account deleted successfully.');
+      toast.success('User account deleted successfully.');
       setUsers((current) => current.filter((u) => u.id !== user.id));
     } catch (err) {
-      setErrorMessage(err.message || 'Error occurred while deleting user.');
+      toast.error(err.message || 'Error occurred while deleting user.');
     }
   };
 
@@ -372,16 +361,6 @@ export default function AdminUserManage() {
         </section>
 
         <section className="px-4 pb-6 md:px-8 md:px-10">
-          {successMessage && (
-            <div className="mb-6 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700 shadow-sm border border-emerald-100">
-              {successMessage}
-            </div>
-          )}
-          {errorMessage && (
-            <div className="mb-6 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-600 shadow-sm border border-rose-100">
-              {errorMessage}
-            </div>
-          )}
 
           <Card className="overflow-hidden rounded-[2rem] border border-surface-container-highest bg-white/80 shadow-soft">
             <div className="flex flex-col gap-4 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between md:p-6">
@@ -554,7 +533,6 @@ export default function AdminUserManage() {
                   onClick={() => {
                     setIsModalOpen(false);
                     setEditingUser(null);
-                    setErrorMessage('');
                   }}
                   className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100 cursor-pointer"
                 >
@@ -891,6 +869,8 @@ export default function AdminUserManage() {
 
         <Footer />
       </main>
+
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
   );
 }
