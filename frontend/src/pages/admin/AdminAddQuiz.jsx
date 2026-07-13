@@ -21,7 +21,7 @@ import {
   Award,
 } from 'lucide-react';
 import Footer from '../../ui/Footer';
-import { AdminHeader, AdminSidebar, ButtonPrimary, Card } from '../../ui';
+import { AdminHeader, AdminSidebar, ButtonPrimary, Card, ToastContainer, useToast } from '../../ui';
 import logoicon from '../../assets/icons/logo.png';
 import { getAuthSession } from '../../services/authService';
 
@@ -67,8 +67,7 @@ export default function AdminAddQuiz() {
   const [subjectOptions, setSubjectOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const toast = useToast();
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,7 +91,6 @@ export default function AdminAddQuiz() {
     }
 
     setIsLoading(true);
-    setErrorMessage('');
     try {
       const response = await fetch(`${API_BASE_URL}/admin/quizzes`, {
         headers: {
@@ -113,7 +111,7 @@ export default function AdminAddQuiz() {
         setSubjectOptions(resJson.data.subjects?.length ? resJson.data.subjects : ['Mathematics', 'Science', 'Sinhala', 'Environment', 'English']);
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Error occurred while loading quizzes.');
+      toast.error(err.message || 'Error occurred while loading quizzes.');
     } finally {
       setIsLoading(false);
     }
@@ -186,8 +184,6 @@ export default function AdminAddQuiz() {
         }
       ]
     });
-    setErrorMessage('');
-    setSuccessMessage('');
     setIsModalOpen(true);
   };
 
@@ -233,8 +229,6 @@ export default function AdminAddQuiz() {
             }
           ]
     });
-    setErrorMessage('');
-    setSuccessMessage('');
     setIsModalOpen(true);
   };
 
@@ -262,10 +256,10 @@ export default function AdminAddQuiz() {
         throw new Error(resJson?.message || 'Failed to delete the quiz.');
       }
 
-      setSuccessMessage('Quiz deleted successfully.');
+      toast.success('Quiz deleted successfully.');
       setQuizzes((current) => current.filter((q) => q.id !== quiz.id));
     } catch (err) {
-      setErrorMessage(err.message || 'Error occurred while deleting quiz.');
+      toast.error(err.message || 'Error occurred while deleting quiz.');
     }
   };
 
@@ -388,7 +382,7 @@ export default function AdminAddQuiz() {
         });
       }
     } catch (err) {
-      alert(`Error uploading image: ${err.message}`);
+      toast.error(`Error uploading image: ${err.message}`);
     }
   };
 
@@ -403,32 +397,30 @@ export default function AdminAddQuiz() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
 
     // Validation
     if (!formData.title.trim()) {
-      setErrorMessage('Quiz Title is required.');
+      toast.error('Quiz Title is required.');
       return;
     }
     if (formData.questions.length === 0) {
-      setErrorMessage('A quiz must have at least one question.');
+      toast.error('A quiz must have at least one question.');
       return;
     }
     for (let i = 0; i < formData.questions.length; i++) {
       const q = formData.questions[i];
       if (!q.question_text.trim()) {
-        setErrorMessage(`Question ${i + 1} text is required.`);
+        toast.error(`Question ${i + 1} text is required.`);
         return;
       }
       const hasCorrect = q.options.some((o) => o.is_correct);
       if (!hasCorrect) {
-        setErrorMessage(`Question ${i + 1} must have a marked correct option.`);
+        toast.error(`Question ${i + 1} must have a marked correct option.`);
         return;
       }
       const optionsEmpty = q.options.some((o) => !o.option_text.trim());
       if (optionsEmpty) {
-        setErrorMessage(`Question ${i + 1} has empty options. Fill all choices.`);
+        toast.error(`Question ${i + 1} has empty options. Fill all choices.`);
         return;
       }
     }
@@ -467,11 +459,11 @@ export default function AdminAddQuiz() {
         throw new Error(resJson?.message || 'Failed to save quiz details.');
       }
 
-      setSuccessMessage(editingQuiz ? 'Quiz details updated successfully.' : 'New quiz created successfully.');
+      toast.success(editingQuiz ? 'Quiz updated successfully.' : 'New quiz created successfully.');
       setIsModalOpen(false);
       loadQuizzes();
     } catch (err) {
-      setErrorMessage(err.message || 'Error occurred while saving quiz details.');
+      toast.error(err.message || 'Error occurred while saving quiz details.');
     } finally {
       setIsSubmitting(false);
     }
@@ -531,16 +523,6 @@ export default function AdminAddQuiz() {
         </section>
 
         <section className="px-4 pb-6 md:px-8 md:px-10">
-          {successMessage && (
-            <div className="mb-6 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-700 shadow-sm border border-emerald-100">
-              {successMessage}
-            </div>
-          )}
-          {errorMessage && (
-            <div className="mb-6 rounded-2xl bg-rose-50 p-4 text-sm font-semibold text-rose-600 shadow-sm border border-rose-100">
-              {errorMessage}
-            </div>
-          )}
 
           <Card className="overflow-hidden rounded-[2rem] border border-surface-container-highest bg-white/80 shadow-soft">
             <div className="flex flex-col gap-4 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between md:p-6">
@@ -875,6 +857,8 @@ export default function AdminAddQuiz() {
 
         <Footer />
       </main>
+
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
   );
 }
