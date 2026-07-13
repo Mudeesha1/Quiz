@@ -106,8 +106,8 @@ Quiz/
 
 ### Step 1: Clone the Repository
 ```bash
-git clone https://github.com/your-username/quiz-platform.git
-cd quiz-platform
+git https://github.com/Sahan-Kaushalya/Quiz-updated.git
+cd Quiz-updated
 ```
 
 ---
@@ -211,3 +211,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Developer & Authors
 * **Sahan Kaushalya** – Lead Project Developer
+<table>
+	<tr>
+		<td align="center" width="220">
+			<a href="https://github.com/Sahan-Kaushalya" style="text-decoration:none; color:inherit;">
+				<img src="https://avatars.githubusercontent.com/Sahan-Kaushalya" width="100" style="border-radius:12px;" alt="Sahan Kaushalya"/>
+				<br />
+				<sub><b>Sahan Kaushalya</b></sub>
+			</a>
+			<br />
+			<small>Full Stack Developer</small>
+		</td>
+	</tr>
+</table>
