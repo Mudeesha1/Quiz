@@ -7,14 +7,17 @@ import {
   ChevronDown,
   Edit3,
   Eye,
+  EyeOff,
   FileText,
   LayoutDashboard,
   Loader2,
   Plus,
+  Quote,
   Search,
   Settings,
   ShieldCheck,
   Sparkles,
+  Star,
   Trash2,
   Users,
   X,
@@ -29,7 +32,7 @@ const NAV_ITEMS = [
   { label: 'Quizzes', icon: FileText, to: '/admin/quizzes' },
   { label: 'Past Papers', icon: ShieldCheck, to: '/admin/past-papers' },
   { label: 'Users', icon: Users, to: '/admin/users', active: true },
-  { label: 'AI Assistant', icon: Sparkles, to: '/admin/ai-assistant' },
+
   { label: 'Settings', icon: Settings, to: '/admin/settings' },
 ];
 
@@ -97,6 +100,9 @@ export default function AdminUserManage() {
           quizAttempts: resJson.data.quizAttempts || [],
           badges: resJson.data.badges || [],
         });
+        if (resJson.data.user) {
+          setPerformanceUser(resJson.data.user);
+        }
       }
     } catch (err) {
       toast.error(err.message || 'Error loading performance details.');
@@ -295,6 +301,65 @@ export default function AdminUserManage() {
     }
   };
 
+  const handleToggleReviewVisibility = async (user) => {
+    if (!user.review) return;
+
+    const session = getAuthSession();
+    if (!session?.tokens?.accessToken) {
+      toast.error('Authorization expired. Please login again.');
+      return;
+    }
+
+    const newVisibility = !user.review.show_on_landing_page;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users/${user.id}/review/visibility`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.tokens.accessToken}`,
+        },
+        body: JSON.stringify({ show_on_landing_page: newVisibility }),
+      });
+
+      const resJson = await response.json();
+      if (!response.ok) {
+        throw new Error(resJson?.message || 'Failed to toggle review visibility.');
+      }
+
+      toast.success(newVisibility ? 'Review is now displaying on the landing page.' : 'Review is now hidden from the landing page.');
+
+      // Update local state immediately
+      setUsers((current) =>
+        current.map((u) => {
+          if (u.id === user.id) {
+            return {
+              ...u,
+              review: {
+                ...u.review,
+                show_on_landing_page: newVisibility,
+              },
+            };
+          }
+          return u;
+        })
+      );
+
+      // If performanceUser is open, update its review too
+      if (performanceUser && performanceUser.id === user.id) {
+        setPerformanceUser((prev) => ({
+          ...prev,
+          review: {
+            ...prev.review,
+            show_on_landing_page: newVisibility,
+          },
+        }));
+      }
+    } catch (err) {
+      toast.error(err.message || 'Error occurred while updating review visibility.');
+    }
+  };
+
   // Helper to generate full profile image path
   const getProfileImageUrl = (profileUrl, fullname) => {
     if (profileUrl) {
@@ -439,8 +504,9 @@ export default function AdminUserManage() {
                       <tr>
                         <th className="px-6 py-4 font-semibold">Name</th>
                         <th className="px-6 py-4 font-semibold">Email</th>
-                        <th className="px-6 py-4 font-semibold">School</th>
+                        <th className="px-6 py-4 font-semibold font-semibold">School</th>
                         <th className="px-6 py-4 font-semibold text-center">Grade</th>
+                        <th className="px-6 py-4 font-semibold text-center">Review</th>
                         <th className="px-6 py-4 font-semibold">Joined</th>
                         <th className="px-6 py-4 font-semibold text-center">Status</th>
                         <th className="px-6 py-4 font-semibold text-right">Actions</th>
@@ -470,6 +536,26 @@ export default function AdminUserManage() {
                             <span className="rounded-full bg-primary-fixed px-3 py-1 text-xs font-bold text-primary">
                               {user.grade}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            {!user.review ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-400 border border-slate-200/60 select-none">
+                                None
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleToggleReviewVisibility(user)}
+                                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${
+                                  user.review.show_on_landing_page
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                                }`}
+                                title="Click to toggle landing page visibility"
+                              >
+                                {user.review.show_on_landing_page ? <Eye size={12} /> : <EyeOff size={12} />}
+                                {user.review.show_on_landing_page ? 'Displaying' : 'Hidden'}
+                              </button>
+                            )}
                           </td>
                           <td className="px-6 py-4 text-slate-500">
                             {user.joined_at
@@ -813,6 +899,51 @@ export default function AdminUserManage() {
                   <p className="mt-1 text-lg font-bold text-slate-800">{performanceUser.current_xp} XP</p>
                 </div>
               </div>
+
+              {/* Scholarship & Review Section */}
+              {performanceUser.review ? (
+                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-primary/80">Student Testimony</p>
+                      <h4 className="mt-1 text-lg font-black text-slate-900">Scholarship & Review</h4>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="rounded-full bg-emerald-50 border border-emerald-200 px-3.5 py-1 text-xs font-bold text-emerald-700">
+                        Score: {performanceUser.review.scholarship_marks}/200
+                      </div>
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            size={16}
+                            className={i < performanceUser.review.review_rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}
+                          />
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => handleToggleReviewVisibility(performanceUser)}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold transition shadow-xs hover:scale-105 active:scale-95 ${
+                          performanceUser.review.show_on_landing_page
+                            ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        }`}
+                      >
+                        {performanceUser.review.show_on_landing_page ? <Eye size={12} /> : <EyeOff size={12} />}
+                        {performanceUser.review.show_on_landing_page ? 'Showing on Landing Page' : 'Hidden on Landing Page'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative mt-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4 italic text-slate-600">
+                    <Quote size={24} className="absolute text-slate-200 right-3 top-3 pointer-events-none rotate-180" />
+                    <p className="text-sm leading-relaxed pr-8">"{performanceUser.review.review_text}"</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-5 text-center">
+                  <p className="text-sm font-semibold text-slate-400">No Scholarship & Review submitted by this student yet.</p>
+                </div>
+              )}
 
               {isPerformanceLoading ? (
                 <div className="flex flex-col items-center justify-center p-12 text-slate-500">

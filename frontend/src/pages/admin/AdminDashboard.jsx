@@ -25,7 +25,7 @@ const NAV_ITEMS = [
   { label: 'Quizzes', icon: FileText, to: '/admin/quizzes' },
   { label: 'Past Papers', icon: ShieldCheck, to: '/admin/past-papers' },
   { label: 'Users', icon: Users, to: '/admin/users' },
-  { label: 'AI Assistant', icon: Sparkles, to: '/admin/ai-assistant' },
+ 
   { label: 'Settings', icon: Settings, to: '/admin/settings' },
 ];
 

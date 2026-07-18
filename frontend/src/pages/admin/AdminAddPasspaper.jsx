@@ -24,13 +24,14 @@ import Footer from '../../ui/Footer';
 import { AdminHeader, AdminSidebar, ToastContainer, useToast } from '../../ui';
 import logoicon from '../../assets/icons/logo.png';
 import { getAuthSession } from '../../services/authService';
+import AddMetadataModal from './AddMetadataModal';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },
   { label: 'Quizzes', icon: FileText, to: '/admin/quizzes' },
   { label: 'Past Papers', icon: ShieldCheck, to: '/admin/past-papers', active: true },
   { label: 'Users', icon: Users, to: '/admin/users' },
-  { label: 'AI Assistant', icon: Sparkles, to: '/admin/ai-assistant' },
+
   { label: 'Settings', icon: Settings, to: '/admin/settings' },
 ];
 
@@ -168,7 +169,6 @@ export default function AdminAddPasspaper() {
   ]);
   const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
   const [metadataType, setMetadataType] = useState('subject'); // 'subject' or 'year'
-  const [metadataValue, setMetadataValue] = useState('');
 
   useEffect(() => {
     const session = getAuthSession();
@@ -307,59 +307,14 @@ export default function AdminAddPasspaper() {
 
   const handleOpenMetadataModal = (type) => {
     setMetadataType(type);
-    setMetadataValue('');
     setIsMetadataModalOpen(true);
   };
 
-  const handleMetadataSubmit = async (e) => {
-    e.preventDefault();
-    const session = getAuthSession();
-    if (!session?.tokens?.accessToken) {
-      toast.error('Please sign in again.');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const url = metadataType === 'subject'
-        ? `${API_BASE_URL}/app/subjects`
-        : `${API_BASE_URL}/app/years`;
-      
-      const payload = metadataType === 'subject'
-        ? { subject_name: metadataValue.trim() }
-        : { year: metadataValue.trim() };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.tokens.accessToken}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.message || 'Failed to save metadata');
-      }
-
-      setIsMetadataModalOpen(false);
-      setMetadataValue('');
-
-      if (metadataType === 'subject') {
-        const newSub = data?.data?.subject_name || metadataValue.trim();
-        setSubjectOptions((current) => current.includes(newSub) ? current : [...current, newSub]);
-        toast.success('Subject added successfully.');
-      } else {
-        const newYr = String(data?.data?.years_name || metadataValue.trim());
-        setYearOptions((current) => current.includes(newYr) ? current : [...current, newYr]);
-        toast.success('Year added successfully.');
-      }
-    } catch (err) {
-      toast.error(err.message || 'Error occurred');
-    } finally {
-      setIsSubmitting(false);
+  const handleMetadataSuccess = (type, value) => {
+    if (type === 'subject') {
+      setSubjectOptions((current) => current.includes(value) ? current : [...current, value]);
+    } else {
+      setYearOptions((current) => current.includes(value) ? current : [...current, value]);
     }
   };
 
@@ -1199,68 +1154,12 @@ export default function AdminAddPasspaper() {
           </div>
         ) : null}
 
-        {/* Metadata Modal */}
-        {isMetadataModalOpen ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
-            <div className="w-full max-w-[500px] rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-xl font-black text-slate-900">
-                    Add New {metadataType === 'subject' ? 'Subject' : 'Year'}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Enter the new {metadataType === 'subject' ? 'subject name' : 'year'} to save in the system.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMetadataModalOpen(false);
-                    setMetadataValue('');
-                  }}
-                  className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form onSubmit={handleMetadataSubmit} className="mt-6 space-y-4">
-                <label className="block text-sm font-semibold text-slate-700">
-                  {metadataType === 'subject' ? 'Subject Name' : 'Year Value'}
-                  <input
-                    type={metadataType === 'subject' ? 'text' : 'number'}
-                    value={metadataValue}
-                    onChange={(e) => setMetadataValue(e.target.value)}
-                    placeholder={metadataType === 'subject' ? 'e.g. History' : 'e.g. 2025'}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-primary focus:bg-white"
-                    required
-                  />
-                </label>
-
-                <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMetadataModalOpen(false);
-                      setMetadataValue('');
-                    }}
-                    className="rounded-full border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-primary-container px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95"
-                  >
-                    {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
-                    Add
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        ) : null}
+        <AddMetadataModal
+          isOpen={isMetadataModalOpen}
+          type={metadataType}
+          onClose={() => setIsMetadataModalOpen(false)}
+          onSuccess={handleMetadataSuccess}
+        />
 
         <Footer />
       </main>
