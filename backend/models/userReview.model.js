@@ -33,6 +33,11 @@ const UserReview = sequelize.define(
 			type: DataTypes.TEXT,
 			allowNull: false,
 		},
+		show_on_landing_page: {
+			type: DataTypes.BOOLEAN,
+			allowNull: false,
+			defaultValue: false,
+		},
 		created_at: {
 			type: DataTypes.DATE,
 			allowNull: false,

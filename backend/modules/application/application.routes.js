@@ -2,6 +2,7 @@ const express = require("express");
 const { getGrades, getSubjectsByGrade, getTopRankedUsers, getLeaderboard, getSubjects } = require("./controllers/grade.controller");
 const { getPapers, createPaper, updatePaper, downloadPaper, bookmarkPaper, completePaper, createSubject, createYear } = require("./controllers/paper.controller");
 const { getQuizzes, getQuizById, submitQuiz } = require("./controllers/quiz.controller");
+const { getLandingPageReviews } = require("./controllers/reviews.controller");
 const { requireUser, requireUserOrAdmin } = require("../../middleware/auth");
 const { uploadMultipleFiles } = require("../../middleware/fileUpload");
 
@@ -19,6 +20,7 @@ applicationRoutes.get("/health", (req, res) => {
 applicationRoutes.get("/grades", getGrades);
 applicationRoutes.get("/grades/:gradeId/subjects", getSubjectsByGrade);
 applicationRoutes.get("/leaderboard/top-3", getTopRankedUsers);
+applicationRoutes.get("/reviews", getLandingPageReviews);
 
 // Protected routes for registered users
 applicationRoutes.get("/papers", requireUserOrAdmin, getPapers);

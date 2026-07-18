@@ -1,6 +1,6 @@
 const express = require("express");
 const { loginAdmin, registerAdmin } = require("./controllers/adminAuth.controller");
-const { getAllUsers, createUser, updateUser, deleteUser, getUserPerformance, getDashboardStats } = require("./controllers/adminUser.controller");
+const { getAllUsers, createUser, updateUser, deleteUser, getUserPerformance, getDashboardStats, toggleReviewVisibility } = require("./controllers/adminUser.controller");
 const { getAllQuizzes, createQuiz, updateQuiz, deleteQuiz } = require("./controllers/adminQuiz.controller");
 const { getAdminProfile, updateAdminProfile, changeAdminPassword, getOpenRouterKey, updateOpenRouterKey } = require("./controllers/adminSettings.controller");
 const { generateQuizFromAI, chatWithAI } = require("./controllers/adminAI.controller");
@@ -36,6 +36,7 @@ adminRoutes.post("/users", requireAdmin, uploadSingleFile("profiles"), createUse
 adminRoutes.put("/users/:userId", requireAdmin, uploadSingleFile("profiles"), updateUser);
 adminRoutes.delete("/users/:userId", requireAdmin, deleteUser);
 adminRoutes.get("/users/:userId/performance", requireAdmin, getUserPerformance);
+adminRoutes.put("/users/:userId/review/visibility", requireAdmin, toggleReviewVisibility);
 adminRoutes.get("/dashboard-stats", requireAdmin, getDashboardStats);
 
 // Quizzes CRUD Routes

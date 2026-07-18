@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";import { useNavigate } from "react-router-dom";import {
+import { useState, useEffect, useRef } from "react";import { useNavigate } from "react-router-dom";import {
   LogIn, UserPlus, Trophy, ChevronLeft, ChevronRight,
   Calculator, Globe, Leaf, Brain, Zap, FileText,
   Quote, ArrowRight, Mail, Phone, MapPin, Check, Star, Award ,
@@ -367,27 +367,89 @@ function HeroCarousel() {
   );
 }
 
-function TestimonialCarousel() {
+function TestimonialCarousel({ testimonials = [] }) {
   const [current, setCurrent] = useState(0);
   const [sliding, setSliding] = useState(false);
   const timerRef = useRef(null);
 
   const go = (idx) => {
-    if (sliding) return;
+    if (sliding || testimonials.length <= 1) return;
     setSliding(true);
     setTimeout(() => {
-      setCurrent((idx + TESTIMONIALS.length) % TESTIMONIALS.length);
+      setCurrent((idx + testimonials.length) % testimonials.length);
       setSliding(false);
     }, 300);
   };
 
   useEffect(() => {
+    if (testimonials.length <= 3) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
     timerRef.current = setInterval(() => go(current + 1), 5000);
     return () => clearInterval(timerRef.current);
-  }, [current]);
+  }, [current, testimonials.length]);
 
-  // Build visible 3
-  const visible = [0, 1, 2].map((offset) => TESTIMONIALS[(current + offset) % TESTIMONIALS.length]);
+  if (testimonials.length === 0) {
+    return null;
+  }
+
+  // If testimonials count <= 3, show them statically without a slider
+  if (testimonials.length <= 3) {
+    return (
+      <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-3 justify-center max-w-5xl mx-auto">
+        {testimonials.map((t, i) => (
+          <div
+            key={t.name + i}
+            className="relative overflow-hidden rounded-md border border-white/80 bg-white/70 p-6 shadow-lg shadow-indigo-100/40 backdrop-blur-sm transition-all"
+          >
+            {/* Top accent */}
+            <div className={`absolute left-0 top-0 h-1 w-full bg-linear-to-r ${t.gradient}`} />
+
+            <Quote size={28} className="absolute text-indigo-100 right-4 top-4" />
+
+            <StarRating count={t.stars} />
+
+            <p className="my-4 text-sm leading-relaxed text-gray-600">"{t.text}"</p>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {t.profile_url ? (
+                  <img
+                    src={t.profile_url}
+                    alt={t.name}
+                    className="h-10 w-10 shrink-0 rounded-full object-cover border border-slate-200"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div
+                  style={{ display: t.profile_url ? 'none' : 'flex' }}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${t.gradient} text-xs font-black text-white shadow-md`}
+                >
+                  {t.initials}
+                </div>
+                <div>
+                  <p className="text-sm font-black text-gray-900">{t.name}</p>
+                  <p className="text-xs text-gray-400">{t.school}</p>
+                </div>
+              </div>
+              {t.score && (
+                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-600">
+                  {t.score}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Build visible 3 (for carousel when count > 3)
+  const visible = [0, 1, 2].map((offset) => testimonials[(current + offset) % testimonials.length]);
 
   return (
     <div className="relative">
@@ -412,7 +474,21 @@ function TestimonialCarousel() {
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${t.gradient} text-xs font-black text-white shadow-md`}>
+                {t.profile_url ? (
+                  <img
+                    src={t.profile_url}
+                    alt={t.name}
+                    className="h-10 w-10 shrink-0 rounded-full object-cover border border-slate-200"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div
+                  style={{ display: t.profile_url ? 'none' : 'flex' }}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br ${t.gradient} text-xs font-black text-white shadow-md`}
+                >
                   {t.initials}
                 </div>
                 <div>
@@ -420,9 +496,11 @@ function TestimonialCarousel() {
                   <p className="text-xs text-gray-400">{t.school}</p>
                 </div>
               </div>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-600">
-                {t.score}
-              </span>
+              {t.score && (
+                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-600">
+                  {t.score}
+                </span>
+              )}
             </div>
           </div>
         ))}
@@ -438,7 +516,7 @@ function TestimonialCarousel() {
         </button>
 
         <div className="flex gap-2">
-          {TESTIMONIALS.map((_, i) => (
+          {testimonials.map((_, i) => (
             <button
               key={i}
               onClick={() => go(i)}
@@ -466,6 +544,61 @@ function TestimonialCarousel() {
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [testimonialsList, setTestimonialsList] = useState([]);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+        const res = await fetch(`${base}/app/reviews`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.status === 'success' && json.data && json.data.length > 0) {
+            const ACCENT_GRADIENTS = [
+              "from-indigo-500 to-purple-600",
+              "from-emerald-500 to-teal-600",
+              "from-amber-400 to-orange-500",
+              "from-pink-500 to-rose-500",
+              "from-blue-500 to-indigo-600"
+            ];
+            const mappedReviews = json.data.map((r, idx) => {
+              const nameParts = r.name.split(' ');
+              const initials = nameParts.map(n => n[0]).join('').toUpperCase().slice(0, 2);
+              const gradient = ACCENT_GRADIENTS[idx % ACCENT_GRADIENTS.length];
+              
+              let profileUrl = r.profile_url;
+              if (profileUrl && profileUrl.startsWith('/')) {
+                const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+                const baseUrl = apiBase.replace('/api/v1', '');
+                profileUrl = `${baseUrl}${profileUrl}`;
+              }
+
+              return {
+                name: r.name,
+                school: r.school,
+                text: r.text,
+                stars: r.stars || 5,
+                initials: initials || 'S',
+                gradient: gradient,
+                score: r.score,
+                profile_url: profileUrl,
+              };
+            });
+            setTestimonialsList(mappedReviews);
+          } else {
+            setTestimonialsList(TESTIMONIALS);
+          }
+        } else {
+          setTestimonialsList(TESTIMONIALS);
+        }
+      } catch (err) {
+        console.error("Failed to fetch reviews: ", err);
+        setTestimonialsList(TESTIMONIALS);
+      }
+    };
+
+    fetchReviews();
+  }, []);
   
   return (
     <div className="relative min-h-screen antialiased text-gray-800">
@@ -686,7 +819,7 @@ export default function LandingPage() {
                 Thousands of students across Sri Lanka have improved their scores with Quiz Master.
               </p>
             </div>
-            <TestimonialCarousel />
+            <TestimonialCarousel testimonials={testimonialsList} />
           </div>
         </section>
 

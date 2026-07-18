@@ -1,5 +1,5 @@
 const bcrypt = require("bcrypt");
-const { User, Grade, UserLevel, QuizAttempt, Quiz, UserBadge, Badge, Paper, GradeHasSubject, Subject } = require("../../../models/associations");
+const { User, Grade, UserLevel, QuizAttempt, Quiz, UserBadge, Badge, Paper, GradeHasSubject, Subject, UserReview } = require("../../../models/associations");
 const { Op, QueryTypes } = require("sequelize");
 const sequelize = require("../../../config/db.config");
 
@@ -32,6 +32,11 @@ const getAllUsers = async (req, res, next) => {
           model: UserLevel,
           as: "currentLevel",
           attributes: ["id", "level_name"],
+        },
+        {
+          model: UserReview,
+          as: "review",
+          attributes: ["id", "scholarship_marks", "review_rating", "review_text", "show_on_landing_page"],
         }
       ],
       order: [["joined_at", "DESC"]],
@@ -52,6 +57,13 @@ const getAllUsers = async (req, res, next) => {
           grade: user.grade?.grade_name || "N/A",
           current_xp: user.current_xp,
           current_level: user.currentLevel?.level_name || "Level 1",
+          review: user.review ? {
+            id: user.review.id,
+            scholarship_marks: user.review.scholarship_marks,
+            review_rating: user.review.review_rating,
+            review_text: user.review.review_text,
+            show_on_landing_page: user.review.show_on_landing_page,
+          } : null,
         })),
       },
     });
@@ -186,6 +198,11 @@ const updateUser = async (req, res, next) => {
           model: UserLevel,
           as: "currentLevel",
           attributes: ["id", "level_name"],
+        },
+        {
+          model: UserReview,
+          as: "review",
+          attributes: ["id", "scholarship_marks", "review_rating", "review_text", "show_on_landing_page"],
         }
       ]
     });
@@ -206,6 +223,13 @@ const updateUser = async (req, res, next) => {
           grade: updatedUser.grade?.grade_name || "N/A",
           current_xp: updatedUser.current_xp,
           current_level: updatedUser.currentLevel?.level_name || "Level 1",
+          review: updatedUser.review ? {
+            id: updatedUser.review.id,
+            scholarship_marks: updatedUser.review.scholarship_marks,
+            review_rating: updatedUser.review.review_rating,
+            review_text: updatedUser.review.review_text,
+            show_on_landing_page: updatedUser.review.show_on_landing_page,
+          } : null,
         }
       }
     });
@@ -258,6 +282,11 @@ const getUserPerformance = async (req, res, next) => {
           model: UserLevel,
           as: "currentLevel",
           attributes: ["id", "level_name"],
+        },
+        {
+          model: UserReview,
+          as: "review",
+          attributes: ["id", "scholarship_marks", "review_rating", "review_text", "show_on_landing_page"],
         }
       ]
     });
@@ -308,6 +337,13 @@ const getUserPerformance = async (req, res, next) => {
           current_xp: user.current_xp,
           grade: user.grade?.grade_name || "N/A",
           level: user.currentLevel?.level_name || "Starter",
+          review: user.review ? {
+            id: user.review.id,
+            scholarship_marks: user.review.scholarship_marks,
+            review_rating: user.review.review_rating,
+            review_text: user.review.review_text,
+            show_on_landing_page: user.review.show_on_landing_page,
+          } : null,
         },
         quizAttempts: quizAttempts.map(attempt => ({
           id: attempt.id,
@@ -640,6 +676,44 @@ const getDashboardStats = async (req, res, next) => {
   }
 };
 
+/**
+ * Toggle the visibility of a user review on the landing page.
+ */
+const toggleReviewVisibility = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { show_on_landing_page } = req.body;
+
+    const review = await UserReview.findOne({ where: { user_id: userId } });
+    if (!review) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Review not found for this student. They must submit a review first.",
+      });
+    }
+
+    review.show_on_landing_page = !!show_on_landing_page;
+    await review.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: `Review visibility successfully updated to ${review.show_on_landing_page}`,
+      data: {
+        review: {
+          id: review.id,
+          user_id: review.user_id,
+          scholarship_marks: review.scholarship_marks,
+          review_rating: review.review_rating,
+          review_text: review.review_text,
+          show_on_landing_page: review.show_on_landing_page,
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllUsers,
   createUser,
@@ -647,4 +721,5 @@ module.exports = {
   deleteUser,
   getUserPerformance,
   getDashboardStats,
+  toggleReviewVisibility,
 };

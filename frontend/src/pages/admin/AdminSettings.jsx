@@ -30,7 +30,6 @@ const NAV_ITEMS = [
   { label: 'Quizzes', icon: FileText, to: '/admin/quizzes' },
   { label: 'Past Papers', icon: ShieldCheck, to: '/admin/past-papers' },
   { label: 'Users', icon: Users, to: '/admin/users' },
-  { label: 'AI Assistant', icon: Sparkles, to: '/admin/ai-assistant' },
   { label: 'Settings', icon: Settings, to: '/admin/settings', active: true },
 ];
 
@@ -53,7 +52,7 @@ const getAvatarUrl = (profileUrl, name) => {
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'security', label: 'Security', icon: Lock },
-  { id: 'api_keys', label: 'API Keys', icon: KeyRound },
+  
 ];
 
 export default function AdminSettings() {
@@ -654,65 +653,7 @@ export default function AdminSettings() {
                   </div>
                  )}
 
-                {/* API KEYS TAB */}
-                {activeTab === 'api_keys' && (
-                  <Card className="overflow-hidden rounded-[2rem] border border-surface-container-highest bg-white/80 shadow-soft">
-                    <div className="border-b border-slate-100 p-6">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                          <KeyRound size={18} />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-black text-slate-900">API Credentials</h3>
-                          <p className="text-sm text-slate-500">Configure credentials for integrated services, such as AI assistant.</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <form onSubmit={handleSaveKey} className="p-6 space-y-5">
-                      <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
-                        <p className="text-xs font-bold text-indigo-700 mb-1">OpenRouter Integration</p>
-                        <p className="text-xs text-indigo-600 leading-relaxed">
-                          Your key is stored securely in the database. OpenRouter.ai provides access to Gemini, Gemma, and Poolside models. Get your key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline font-bold">openrouter.ai/keys</a>.
-                        </p>
-                      </div>
-
-                      <label className="block text-sm font-semibold text-slate-700">
-                        OpenRouter API Key (sk-or-...)
-                        <div className="relative mt-2">
-                          <input
-                            type={showKey ? 'text' : 'password'}
-                            value={openRouterKey}
-                            onChange={(e) => setOpenRouterKey(e.target.value)}
-                            placeholder="sk-or-v1-..."
-                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm outline-none transition focus:border-primary focus:bg-white"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowKey((v) => !v)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                          >
-                            {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        </div>
-                      </label>
-
-                      <div className="flex justify-end border-t border-slate-100 pt-5">
-                        <ButtonPrimary
-                          type="submit"
-                          disabled={isSavingKey}
-                          className="inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-bold disabled:opacity-55"
-                        >
-                          {isSavingKey ? (
-                            <><Loader2 size={16} className="animate-spin" /> Saving...</>
-                          ) : (
-                            <><Save size={16} /> Save API Key</>
-                          )}
-                        </ButtonPrimary>
-                      </div>
-                    </form>
-                  </Card>
-                )}
+               
               </div>
             </div>
           )}

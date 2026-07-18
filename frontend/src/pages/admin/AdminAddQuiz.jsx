@@ -24,13 +24,14 @@ import Footer from '../../ui/Footer';
 import { AdminHeader, AdminSidebar, ButtonPrimary, Card, ToastContainer, useToast } from '../../ui';
 import logoicon from '../../assets/icons/logo.png';
 import { getAuthSession } from '../../services/authService';
+import AddMetadataModal from './AddMetadataModal';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/admin/dashboard' },
   { label: 'Quizzes', icon: FileText, to: '/admin/quizzes', active: true },
   { label: 'Past Papers', icon: ShieldCheck, to: '/admin/past-papers' },
   { label: 'Users', icon: Users, to: '/admin/users' },
-  { label: 'AI Assistant', icon: Sparkles, to: '/admin/ai-assistant' },
+  
   { label: 'Settings', icon: Settings, to: '/admin/settings' },
 ];
 
@@ -73,6 +74,8 @@ export default function AdminAddQuiz() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState(null);
+  const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
+  const [metadataType, setMetadataType] = useState('subject');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -110,7 +113,9 @@ export default function AdminAddQuiz() {
         
         // Ensure default fallback options if DB lists are empty
         setGradeOptions(resJson.data.grades?.length ? resJson.data.grades : ['Grade 4', 'Grade 5']);
-        setSubjectOptions(resJson.data.subjects?.length ? resJson.data.subjects : ['Mathematics', 'Science', 'Sinhala', 'Environment', 'English']);
+        const rawSubjects = resJson.data.subjects?.length ? resJson.data.subjects : ['Mathematics', 'Science', 'Sinhala', 'Environment', 'English'];
+        const filteredSubjects = rawSubjects.filter(sub => sub && !sub.toLowerCase().includes('scholarship'));
+        setSubjectOptions(filteredSubjects);
       }
     } catch (err) {
       toast.error(err.message || 'Error occurred while loading quizzes.');
@@ -191,6 +196,20 @@ export default function AdminAddQuiz() {
       return new Date(q.created_at) >= oneWeekAgo;
     }).length;
   }, [quizzes]);
+
+  const handleOpenMetadataModal = (type) => {
+    setMetadataType(type);
+    setIsMetadataModalOpen(true);
+  };
+
+  const handleMetadataSuccess = (type, value) => {
+    if (type === 'subject') {
+      if (value && value.toLowerCase().includes('scholarship')) {
+        return;
+      }
+      setSubjectOptions((current) => current.includes(value) ? current : [...current, value]);
+    }
+  };
 
   // Open Modal for Add
   const handleOpenAddModal = () => {
@@ -565,6 +584,17 @@ export default function AdminAddQuiz() {
                   Create, edit, and organize fun quiz challenges for students across every subject.
                 </p>
               </div>
+              
+                <div className="flex flex-wrap gap-3">
+                  <button
+                  type="button"
+                  onClick={() => handleOpenMetadataModal('subject')}
+                  className="inline-flex items-center justify-center gap-4 rounded-full border border-primary/20 bg-white px-6 py-5 text-md font-bold text-primary transition hover:bg-primary-fixed/40"
+                >
+                  <Sparkles size={16} /> Add Subject
+                </button>
+                </div>
+          
 
               <ButtonPrimary
                 onClick={handleOpenAddModal}
@@ -1007,6 +1037,13 @@ export default function AdminAddQuiz() {
             </div>
           </div>
         )}
+
+        <AddMetadataModal
+          isOpen={isMetadataModalOpen}
+          type={metadataType}
+          onClose={() => setIsMetadataModalOpen(false)}
+          onSuccess={handleMetadataSuccess}
+        />
 
         <Footer />
       </main>

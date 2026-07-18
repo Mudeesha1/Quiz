@@ -19,7 +19,6 @@ import AdminUserManage from './pages/admin/AdminUserManage';
 import AdminAddQuiz from './pages/admin/AdminAddQuiz';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminSettings from './pages/admin/AdminSettings';
-import AdminAIAssistant from './pages/admin/AdminAIAssistant';
 import Error405Page from './pages/errors/405error';
 import Error401Page from './pages/errors/401error';
 import Error404Page from './pages/errors/404error';
@@ -79,7 +78,6 @@ function PageTitleManager() {
       '/admin/users': 'Manage Users | Quiz Master',
       '/admin/quizzes': 'Manage Quizzes | Quiz Master',
       '/admin/settings': 'Settings | Quiz Master',
-      '/admin/ai-assistant': 'AI Assistant | Quiz Master',
       '/403': 'Access Denied | Quiz Master',
     };
 
@@ -202,14 +200,7 @@ function App() {
             </AdminProtectedRoute>
           }
         />
-        <Route
-          path="/admin/ai-assistant"
-          element={
-            <AdminProtectedRoute>
-              <AdminAIAssistant />
-            </AdminProtectedRoute>
-          }
-        />
+        
         <Route path="/401" element={<Error401Page />} />
         <Route path="/403" element={<Error403Page />} />
         <Route path="/404" element={<Error404Page />} />

@@ -83,13 +83,7 @@ export function AdminSidebar({ items, open, onClose, onAddQuizClick }) {
         </nav>
 
         <div className="mt-auto px-6 space-y-3">
-          <button
-            onClick={handleAddQuizClick}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-secondary-container px-4 py-3 text-sm font-bold text-secondary shadow-sm transition hover:opacity-95 cursor-pointer"
-          >
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-secondary">+</span>
-            Add New Quiz
-          </button>
+      
           <button
             onClick={handleLogout}
             className="flex w-full items-center justify-center gap-2 rounded-full bg-rose-50 border border-rose-200 px-4 py-3 text-sm font-bold text-rose-600 shadow-sm transition hover:bg-rose-100/50 cursor-pointer animate-fade-in"
